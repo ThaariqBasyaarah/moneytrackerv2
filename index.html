@@ -2,426 +2,381 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"/>
-  <meta name="theme-color" content="#0f0f0f"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0a0a0a"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <title>Trackr — Expense Tracker</title>
+  <title>Trackr</title>
   <link rel="manifest" href="manifest.json"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    :root {
-      --bg: #0a0a0a; --bg2: #111111; --bg3: #1a1a1a; --bg4: #222222;
-      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
-      --text: #f0f0f0; --text2: #888; --text3: #555;
-      --accent: #c8f560; --accent2: #a8e040; --accent-bg: rgba(200,245,96,0.08);
-      --red: #ff4d4d; --red-bg: rgba(255,77,77,0.08);
-      --blue: #4d9fff; --blue-bg: rgba(77,159,255,0.08);
-      --amber: #ffb347; --amber-bg: rgba(255,179,71,0.08);
-      --purple: #b47fff; --teal: #40e0d0;
-      --radius: 16px; --radius-sm: 10px;
-      --font-head: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif;
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    :root{
+      --bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;
+      --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.12);
+      --t1:#f0f0f0;--t2:#888;--t3:#555;
+      --a:#c8f560;--a2:#a8e040;--abg:rgba(200,245,96,.08);
+      --red:#ff4d4d;--redbg:rgba(255,77,77,.08);
+      --blue:#4d9fff;--bluebg:rgba(77,159,255,.08);
+      --amber:#ffb347;
+      --r:16px;--rs:10px;
+      --fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
     }
-    html, body { background: var(--bg); color: var(--text); font-family: var(--font-body); height: 100%; overflow: hidden; }
-
-    /* MOBILE */
-    #root { height: 100vh; display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; position: relative; background: var(--bg); overflow: hidden; }
-    .desktop-main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-    .page-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 90px; }
-    .page-scroll::-webkit-scrollbar { display: none; }
-    .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: rgba(10,10,10,0.92); backdrop-filter: blur(20px); border-top: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-around; padding: 10px 0 22px; z-index: 100; }
-    .nav-brand { display: none; }
-    .nav-divider { display: none; }
-    .nav-fab-label { display: none; }
+    html,body{background:var(--bg);color:var(--t1);font-family:var(--fb);height:100%;overflow:hidden}
+    #root{height:100vh;display:flex;flex-direction:column;max-width:430px;margin:0 auto;background:var(--bg);overflow:hidden;position:relative}
 
     /* DESKTOP */
-    @media (min-width: 769px) {
-      #root { max-width: 100%; flex-direction: row; overflow: visible; }
-      .desktop-main { margin-left: 240px; overflow: hidden; height: 100vh; flex-direction: column; display: flex; }
-      .page-scroll { padding-bottom: 40px; }
-      .bottom-nav { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; max-width: 240px; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 28px 12px 24px; gap: 2px; border-top: none; border-right: 0.5px solid var(--border); transform: none; }
-      .nav-item { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px 16px; border-radius: 12px; width: 100%; flex: none; }
-      .nav-item svg { width: 20px; height: 20px; }
-      .nav-item span { font-size: 14px; letter-spacing: 0; font-weight: 400; }
-      .nav-item.active { background: var(--accent-bg); }
-      .nav-fab { width: 100%; border-radius: 12px; margin: 8px 0; padding: 13px 16px; justify-content: flex-start; gap: 12px; box-shadow: none; height: auto; }
-      .nav-fab svg { width: 20px; height: 20px; }
-      .nav-fab-label { display: block; font-size: 14px; font-weight: 700; font-family: var(--font-head); color: #0a0a0a; }
-      .nav-brand { display: flex; align-items: center; gap: 10px; padding: 0 16px; margin-bottom: 20px; }
-      .nav-brand-icon { font-size: 22px; }
-      .nav-brand-name { font-family: var(--font-head); font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
-      .nav-divider { display: block; height: 0.5px; background: var(--border); margin: 8px 4px; }
-      .page-header { padding: 32px 40px 16px; }
-      .page-title { font-size: 32px; }
-      .section { padding: 0 40px; }
-      .hero-card { margin: 0 40px 24px; }
-      .pills-scroll { padding: 0 40px; }
-      .stats-grid { grid-template-columns: repeat(4, 1fr); }
-      .modal-overlay { align-items: center; }
-      .modal { max-width: 480px; border-radius: 24px; margin-bottom: 0; }
+    @media(min-width:769px){
+      #root{max-width:100%;flex-direction:row}
+      .sidebar{display:flex!important}
+      .bottom-nav{display:none!important}
+      .main-wrap{margin-left:220px;flex:1;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+      .page-scroll{padding-bottom:24px}
+      .page-header{padding:32px 40px 16px}
+      .page-title{font-size:32px}
+      .section{padding:0 40px}
+      .hero-card{margin:0 40px 24px}
+      .pills-scroll{padding:0 40px}
+      .stats-grid{grid-template-columns:repeat(4,1fr)}
+      .modal-overlay{align-items:center}
+      .modal{border-radius:20px;max-width:480px;max-height:85vh}
     }
-    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); transition: all .2s; flex: 1; }
-    .nav-item svg { width: 22px; height: 22px; transition: all .2s; stroke: var(--text3); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-    .nav-item span { font-size: 10px; font-family: var(--font-body); font-weight: 400; color: var(--text3); transition: all .2s; letter-spacing: .3px; }
-    .nav-item.active svg { stroke: var(--accent); }
-    .nav-item.active span { color: var(--accent); font-weight: 500; }
-    .nav-fab { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 20px rgba(200,245,96,0.3); transition: transform .2s, box-shadow .2s; flex-shrink: 0; margin-bottom: 4px; }
-    .nav-fab:active { transform: scale(0.94); }
-    .nav-fab svg { stroke: #0a0a0a; width: 24px; height: 24px; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-    .page-header { padding: 20px 20px 12px; display: flex; align-items: center; justify-content: space-between; }
-    .page-title { font-family: var(--font-head); font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
-    .page-subtitle { font-size: 13px; color: var(--text2); margin-top: 2px; }
-    .card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 18px; }
-    .section { padding: 0 20px; margin-bottom: 24px; }
-    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; font-family: var(--font-head); }
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .stat-card { background: var(--bg3); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 16px; }
-    .stat-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; }
-    .stat-value { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
-    .stat-value.accent { color: var(--accent); }
-    .stat-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
-    .hero-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 24px; padding: 24px; margin: 0 20px 24px; position: relative; overflow: hidden; }
-    .hero-card::before { content:''; position:absolute; top:-40px; right:-40px; width:160px; height:160px; border-radius:50%; background: radial-gradient(circle, rgba(200,245,96,0.06) 0%, transparent 70%); pointer-events:none; }
-    .hero-label { font-size: 12px; color: var(--text2); letter-spacing: .5px; margin-bottom: 8px; }
-    .hero-amount { font-family: var(--font-head); font-size: 38px; font-weight: 800; letter-spacing: -1.5px; color: var(--text); line-height: 1; }
-    .hero-amount .currency { font-size: 20px; color: var(--text2); font-weight: 400; margin-right: 4px; }
-    .hero-period { font-size: 12px; color: var(--text3); margin-top: 8px; }
-    .hero-bar { margin-top: 16px; }
-    .hero-bar-track { height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; }
-    .hero-bar-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width .6s ease; }
-    .hero-bar-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text3); }
-    .tx-item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 0.5px solid var(--border); }
-    .tx-item:last-child { border-bottom: none; }
-    .tx-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
-    .tx-info { flex: 1; min-width: 0; }
-    .tx-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tx-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
-    .tx-amount { font-family: var(--font-head); font-size: 15px; font-weight: 700; color: var(--red); white-space: nowrap; }
-    .tx-date { font-size: 11px; color: var(--text3); text-align: right; margin-top: 2px; }
-    .tx-img-thumb { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; border: 0.5px solid var(--border); flex-shrink: 0; }
-    .filter-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; border: 0.5px solid var(--border); background: var(--bg3); color: var(--text2); white-space: nowrap; }
-    .filter-chip.active { background: var(--accent); color: #0a0a0a; border-color: var(--accent); }
-    .pills-scroll { display: flex; gap: 8px; overflow-x: auto; padding: 0 20px 0; margin-bottom: 16px; }
-    .pills-scroll::-webkit-scrollbar { display: none; }
-    .form-group { margin-bottom: 18px; }
-    .form-label { font-size: 12px; color: var(--text2); margin-bottom: 8px; display: block; letter-spacing: .3px; }
-    .form-input { width: 100%; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 13px 16px; font-size: 15px; color: var(--text); font-family: var(--font-body); outline: none; transition: border-color .2s; -webkit-appearance: none; }
-    .form-input:focus { border-color: var(--accent); }
-    .form-input::placeholder { color: var(--text3); }
-    select.form-input { cursor: pointer; }
-    .form-input option { background: var(--bg3); }
-    .btn { width: 100%; padding: 15px; background: var(--accent); color: #0a0a0a; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; font-family: var(--font-head); cursor: pointer; transition: all .2s; letter-spacing: .3px; }
-    .btn:active { transform: scale(0.98); }
-    .btn.btn-ghost { background: var(--bg3); color: var(--text); border: 0.5px solid var(--border2); }
-    .btn.btn-danger { background: var(--red-bg); color: var(--red); border: 0.5px solid rgba(255,77,77,.2); }
-    .btn-row { display: flex; gap: 10px; }
-    .btn-row .btn { flex: 1; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
-    .modal { background: var(--bg2); border-radius: 24px 24px 0 0; width: 100%; max-width: 430px; max-height: 88dvh; display: flex; flex-direction: column; border-top: 0.5px solid var(--border); animation: slideUp .25s ease; overflow: hidden; }
-    .modal-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 20px 8px; -webkit-overflow-scrolling: touch; }
-    .modal-scroll::-webkit-scrollbar { display: none; }
-    .modal-footer { padding: 12px 20px; padding-bottom: max(20px, env(safe-area-inset-bottom, 20px)); background: var(--bg2); border-top: 0.5px solid var(--border); flex-shrink: 0; }
-    @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    .modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
-    .modal-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 24px; }
-    .camera-zone { width: 100%; aspect-ratio: 4/3; border-radius: var(--radius); border: 1.5px dashed var(--border2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; background: var(--bg3); overflow: hidden; position: relative; }
-    .camera-zone video, .camera-zone img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; border-radius: var(--radius); }
-    .camera-zone-label { font-size: 13px; color: var(--text2); text-align: center; z-index: 1; }
-    .camera-icon { font-size: 28px; z-index: 1; }
-    .camera-btns { display: flex; gap: 10px; margin-top: 10px; }
-    .progress-wrap { margin-bottom: 16px; }
-    .progress-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-    .progress-name { font-size: 14px; font-weight: 500; color: var(--text); }
-    .progress-vals { text-align: right; }
-    .progress-spent { font-family: var(--font-head); font-size: 14px; font-weight: 700; color: var(--text); }
-    .progress-budget { font-size: 11px; color: var(--text2); }
-    .progress-track { height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
-    .progress-fill { height: 100%; border-radius: 3px; transition: width .5s ease; }
-    .filter-input-sm { background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 8px; padding: 7px 10px; font-size: 12px; color: var(--text); font-family: var(--font-body); outline: none; flex-shrink: 0; }
-    .filter-input-sm:focus { border-color: var(--accent); }
-    .week-chart { display: flex; align-items: flex-end; gap: 6px; height: 80px; padding: 0 4px; }
-    .week-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .week-bar-track { width: 100%; flex: 1; background: var(--bg3); border-radius: 4px; display: flex; align-items: flex-end; overflow: hidden; }
-    .week-bar-fill { width: 100%; border-radius: 4px; transition: height .5s ease; }
-    .week-day-label { font-size: 10px; color: var(--text3); }
-    .week-day-label.today { color: var(--accent); font-weight: 600; }
-    .empty { text-align: center; padding: 48px 20px; color: var(--text2); }
-    .empty-icon { font-size: 40px; margin-bottom: 12px; }
-    .empty-text { font-size: 14px; }
-    .photo-preview { width: 100%; border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; position: relative; }
-    .photo-preview img { width: 100%; display: block; }
-    .photo-remove { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; color: white; border: none; }
-    .icon-btn { width: 36px; height: 36px; border-radius: 10px; background: var(--bg3); border: 0.5px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-    .flex-between { display: flex; align-items: center; justify-content: space-between; }
-    /* Sync status */
-    .sync-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    .sync-dot.online { background: var(--accent); }
-    .sync-dot.offline { background: var(--amber); }
-    .sync-dot.syncing { background: var(--blue); animation: pulse 1s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 20px; padding: 10px 18px; font-size: 13px; color: var(--text); z-index: 999; display: flex; align-items: center; gap: 8px; animation: slideDown .3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-    @keyframes slideDown { from{transform:translateX(-50%) translateY(-20px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    .fade-in { animation: fadeIn .3s ease forwards; }
+    @media(max-width:768px){
+      .sidebar{display:none!important}
+      .main-wrap{display:contents}
+    }
+
+    /* SIDEBAR */
+    .sidebar{display:none;position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--bg2);border-right:.5px solid var(--b1);flex-direction:column;padding:24px 12px;gap:2px;z-index:50}
+    .sb-brand{font-family:var(--fh);font-size:20px;font-weight:800;color:var(--t1);padding:0 12px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+    .sb-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--rs);cursor:pointer;transition:all .15s;color:var(--t2);font-size:14px}
+    .sb-item:hover{background:var(--bg3);color:var(--t1)}
+    .sb-item.active{background:var(--abg);color:var(--a)}
+    .sb-item svg{flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+    .sb-fab{width:100%;padding:12px 14px;background:var(--a);color:#0a0a0a;border:none;border-radius:var(--rs);font-size:14px;font-weight:700;font-family:var(--fh);cursor:pointer;display:flex;align-items:center;gap:8px;margin:8px 0;transition:all .2s}
+    .sb-divider{height:.5px;background:var(--b1);margin:6px 4px}
+    .sb-spacer{flex:1}
+
+    /* BOTTOM NAV (mobile) */
+    .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(10,10,10,.92);backdrop-filter:blur(20px);border-top:.5px solid var(--b1);display:flex;align-items:center;justify-content:space-around;padding:10px 0 22px;padding-bottom:max(22px,env(safe-area-inset-bottom));z-index:100}
+    .nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 10px;flex:1}
+    .nav-item svg{width:22px;height:22px;fill:none;stroke:var(--t3);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+    .nav-item span{font-size:10px;color:var(--t3);transition:color .2s}
+    .nav-item.active svg{stroke:var(--a)}
+    .nav-item.active span{color:var(--a);font-weight:500}
+    .nav-fab{width:52px;height:52px;border-radius:50%;background:var(--a);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(200,245,96,.3);flex-shrink:0;margin-bottom:4px}
+    .nav-fab svg{fill:none;stroke:#0a0a0a;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;width:24px;height:24px}
+
+    /* SCROLL */
+    .page-scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:90px}
+    .page-scroll::-webkit-scrollbar{display:none}
+    .main-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+    /* HEADER */
+    .page-header{padding:20px 20px 12px;display:flex;align-items:center;justify-content:space-between}
+    .page-title{font-family:var(--fh);font-size:26px;font-weight:800;letter-spacing:-.5px;color:var(--t1)}
+    .page-subtitle{font-size:13px;color:var(--t2);margin-top:2px}
+
+    /* CARDS */
+    .card{background:var(--bg2);border:.5px solid var(--b1);border-radius:var(--r);padding:18px}
+    .section{padding:0 20px;margin-bottom:24px}
+    .section-label{font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3);margin-bottom:12px;font-family:var(--fh)}
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .stat-card{background:var(--bg3);border:.5px solid var(--b1);border-radius:var(--r);padding:16px}
+    .stat-label{font-size:11px;color:var(--t2);margin-bottom:6px}
+    .stat-value{font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);letter-spacing:-.5px}
+    .stat-value.ac{color:var(--a)}
+    .stat-sub{font-size:11px;color:var(--t3);margin-top:4px}
+
+    /* HERO */
+    .hero-card{background:var(--bg2);border:.5px solid var(--b1);border-radius:24px;padding:24px;margin:0 20px 24px;position:relative;overflow:hidden}
+    .hero-card::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(200,245,96,.06) 0%,transparent 70%);pointer-events:none}
+    .hero-label{font-size:12px;color:var(--t2);letter-spacing:.5px;margin-bottom:8px}
+    .hero-amt{font-family:var(--fh);font-size:38px;font-weight:800;letter-spacing:-1.5px;line-height:1}
+    .hero-cur{font-size:20px;color:var(--t2);font-weight:400;margin-right:4px}
+    .hero-sub{font-size:12px;color:var(--t3);margin-top:8px}
+    .bar-track{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-top:14px}
+    .bar-fill{height:100%;border-radius:2px;background:var(--a);transition:width .6s}
+    .bar-labels{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--t3)}
+
+    /* TX */
+    .tx-item{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:.5px solid var(--b1)}
+    .tx-item:last-child{border-bottom:none}
+    .tx-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+    .tx-info{flex:1;min-width:0}
+    .tx-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tx-meta{font-size:12px;color:var(--t2);margin-top:2px}
+    .tx-amt{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--red);white-space:nowrap}
+    .tx-date{font-size:11px;color:var(--t3);text-align:right;margin-top:2px}
+    .tx-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;border:.5px solid var(--b1);flex-shrink:0}
+
+    /* PILLS */
+    .pills{display:flex;gap:8px;overflow-x:auto;padding:0 20px;margin-bottom:16px}
+    .pills::-webkit-scrollbar{display:none}
+    .chip{flex-shrink:0;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:.5px solid var(--b1);background:var(--bg3);color:var(--t2);white-space:nowrap}
+    .chip.on{background:var(--a);color:#0a0a0a;border-color:var(--a)}
+
+    /* FORMS */
+    .fg{margin-bottom:18px}
+    .fl{font-size:12px;color:var(--t2);margin-bottom:8px;display:block;letter-spacing:.3px}
+    .fi{width:100%;background:var(--bg3);border:.5px solid var(--b2);border-radius:var(--rs);padding:13px 16px;font-size:15px;color:var(--t1);font-family:var(--fb);outline:none;transition:border-color .2s;-webkit-appearance:none}
+    .fi:focus{border-color:var(--a)}
+    .fi::placeholder{color:var(--t3)}
+    .btn{width:100%;padding:15px;background:var(--a);color:#0a0a0a;border:none;border-radius:var(--rs);font-size:15px;font-weight:700;font-family:var(--fh);cursor:pointer;transition:all .2s}
+    .btn:active{transform:scale(.98)}
+    .btn.ghost{background:var(--bg3);color:var(--t1);border:.5px solid var(--b2)}
+    .btn.danger{background:var(--redbg);color:var(--red);border:.5px solid rgba(255,77,77,.2)}
+    .btn-row{display:flex;gap:10px}
+    .btn-row .btn{flex:1}
+
+    /* MODAL — sticky footer pattern */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+    .modal{background:var(--bg2);border-radius:24px 24px 0 0;width:100%;max-width:430px;border-top:.5px solid var(--b1);animation:up .25s ease;display:flex;flex-direction:column;max-height:88dvh;max-height:88vh;overflow:hidden}
+    @keyframes up{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+    .modal-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:12px 20px 8px}
+    .modal-body::-webkit-scrollbar{display:none}
+    .modal-foot{flex-shrink:0;padding:12px 20px;padding-bottom:max(16px,env(safe-area-inset-bottom,16px));background:var(--bg2);border-top:.5px solid var(--b1)}
+    .modal-handle{width:36px;height:4px;background:var(--b2);border-radius:2px;margin:0 auto 20px}
+    .modal-title{font-family:var(--fh);font-size:20px;font-weight:700;margin-bottom:24px}
+
+    /* PROGRESS */
+    .prog-wrap{margin-bottom:16px}
+    .prog-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+    .prog-name{font-size:14px;font-weight:500}
+    .prog-right{text-align:right}
+    .prog-spent{font-family:var(--fh);font-size:14px;font-weight:700}
+    .prog-bud{font-size:11px;color:var(--t2)}
+    .prog-track{height:6px;background:var(--bg4);border-radius:3px;overflow:hidden}
+    .prog-fill{height:100%;border-radius:3px;transition:width .5s}
+
+    /* WEEK CHART */
+    .wchart{display:flex;align-items:flex-end;gap:6px;height:80px;padding:0 4px}
+    .wbar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+    .wbar-track{width:100%;flex:1;background:var(--bg3);border-radius:4px;display:flex;align-items:flex-end;overflow:hidden}
+    .wbar-fill{width:100%;border-radius:4px;transition:height .5s}
+    .wday{font-size:10px;color:var(--t3)}
+    .wday.today{color:var(--a);font-weight:600}
+
+    /* MISC */
+    .icon-btn{width:36px;height:36px;border-radius:10px;background:var(--bg3);border:.5px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+    .fxb{display:flex;align-items:center;justify-content:space-between}
+    .sync-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:5px}
+    .sync-dot.on{background:var(--a)}
+    .sync-dot.spin{background:var(--blue);animation:blink 1s infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--bg3);border:.5px solid var(--b2);border-radius:20px;padding:10px 18px;font-size:13px;color:var(--t1);z-index:999;display:flex;align-items:center;gap:8px;animation:td .3s ease;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+    @keyframes td{from{transform:translateX(-50%) translateY(-20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+    .empty{text-align:center;padding:40px 20px;color:var(--t2)}
+    .empty-icon{font-size:36px;margin-bottom:10px}
+    .camera-zone{width:100%;border-radius:var(--r);border:1.5px dashed var(--b2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;background:var(--bg3);overflow:hidden;position:relative;height:90px}
+    .photo-wrap{width:100%;border-radius:var(--r);overflow:hidden;margin-bottom:16px;position:relative}
+    .photo-wrap img{width:100%;display:block}
+    .photo-rm{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:white;border:none}
+    .fi-sm{background:var(--bg3);border:.5px solid var(--b2);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--t1);font-family:var(--fb);outline:none;flex:1}
+    .fi-sm:focus{border-color:var(--a)}
+    @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .fade{animation:fi .3s ease forwards}
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useRef, useCallback, useMemo } = React;
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
-// ── SUPABASE CONFIG ──────────────────────────────────────────────────
-const SB_URL = 'https://rmakfsanjglskpfxjuxb.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtYWtmc2Fuamdsc2twZnhqdXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNzMzNDgsImV4cCI6MjA5NTg0OTM0OH0.caR3bxyW95xZ2YibztnV6du-TiRhQHn8ppDBr85yTaM';
-const SB_HEADERS = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` };
+// ── CONFIG ────────────────────────────────────────────────────────────
+const SB='https://rmakfsanjglskpfxjuxb.supabase.co';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtYWtmc2Fuamdsc2twZnhqdXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNzMzNDgsImV4cCI6MjA5NTg0OTM0OH0.caR3bxyW95xZ2YibztnV6du-TiRhQHn8ppDBr85yTaM';
+const H={'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY};
 
-const sb = {
-  async get(table, params='') {
-    const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers: { ...SB_HEADERS, 'Prefer': 'return=representation' } });
-    if (!r.ok) throw new Error(await r.text());
-    return r.json();
-  },
-  async post(table, body) {
-    const r = await fetch(`${SB_URL}/rest/v1/${table}`, { method:'POST', headers: { ...SB_HEADERS, 'Prefer': 'return=representation' }, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error(await r.text());
-    return r.json();
-  },
-  async patch(table, id, body) {
-    const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, { method:'PATCH', headers: { ...SB_HEADERS, 'Prefer': 'return=representation' }, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error(await r.text());
-    return r.json();
-  },
-  async delete(table, id) {
-    const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, { method:'DELETE', headers: SB_HEADERS });
-    if (!r.ok) throw new Error(await r.text());
-    return true;
-  }
+const db={
+  async get(t,q=''){const r=await fetch(`${SB}/rest/v1/${t}?${q}`,{headers:{...H,'Prefer':'return=representation'}});if(!r.ok)throw new Error(await r.text());return r.json()},
+  async post(t,b){const r=await fetch(`${SB}/rest/v1/${t}`,{method:'POST',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json()},
+  async patch(t,id,b){const r=await fetch(`${SB}/rest/v1/${t}?id=eq.${id}`,{method:'PATCH',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify(b)});if(!r.ok)throw new Error(await r.text());return r.json()},
+  async del(t,id){const r=await fetch(`${SB}/rest/v1/${t}?id=eq.${id}`,{method:'DELETE',headers:H});if(!r.ok)throw new Error(await r.text());return true}
 };
 
-// ── UTILS ────────────────────────────────────────────────────────────
-const fmtIDR = (n) => new Intl.NumberFormat('id-ID', { style:'currency', currency:'IDR', minimumFractionDigits:0 }).format(n);
-const today = () => new Date().toISOString().split('T')[0];
-const dayName = (d) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(d).getDay()];
-const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const GROUP_COLORS = ['#c8f560','#4d9fff','#ff4d4d','#ffb347','#b47fff','#40e0d0','#ff7eb3','#7effd4'];
-const GROUP_EMOJIS = ['🏠','🍔','🚗','💊','🎮','✈️','👕','🎓','💼','☕','🛒','🏋️'];
-const AVATAR_OPTIONS = ['😊','👨','👩','🧑','👦','👧','🧔','👱','🙋','🤵','👰','🧕'];
+// ── UTILS ─────────────────────────────────────────────────────────────
+const idr=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(n);
+const tod=()=>new Date().toISOString().split('T')[0];
+const dayN=d=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(d).getDay()];
+const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const COLORS=['#c8f560','#4d9fff','#ff4d4d','#ffb347','#b47fff','#40e0d0','#ff7eb3','#7effd4'];
+const EMOJIS=['🏠','🍔','🚗','💊','🎮','✈️','👕','🎓','💼','☕','🛒','🏋️'];
+const AVATARS=['😊','👨','👩','🧑','👦','👧','🧔','👱','🙋','🤵','👰','🧕'];
 
-// ── AUTH UTILS (tetap localStorage untuk session) ────────────────────
-const getSession = () => { try { return JSON.parse(localStorage.getItem('trackr_session')||'null'); } catch { return null; } };
-const saveSession = (u) => localStorage.setItem('trackr_session', JSON.stringify(u));
-const clearSession = () => localStorage.removeItem('trackr_session');
-const hashPass = (p) => btoa(encodeURIComponent(p + 'trackr_salt_2025'));
+const getSession=()=>{try{return JSON.parse(localStorage.getItem('ts')||'null')}catch{return null}};
+const setSession=u=>localStorage.setItem('ts',JSON.stringify(u));
+const clearSession=()=>localStorage.removeItem('ts');
+const hash=p=>btoa(encodeURIComponent(p+'trackr_salt_2025'));
 
-// ── TOAST ────────────────────────────────────────────────────────────
-function Toast({ msg, icon='✓' }) {
-  return <div className="toast"><span>{icon}</span>{msg}</div>;
-}
-
-// ── ICON ─────────────────────────────────────────────────────────────
-const Icon = ({ name, size=22, stroke=1.8, color }) => {
-  const paths = {
-    home: <><path d="M3 12L12 3l9 9"/><path d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></>,
-    plus: <><path d="M12 5v14M5 12h14"/></>,
-    tag:  <><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></>,
-    receipt: <><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/></>,
-    filter: <><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></>,
-    trash: <><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></>,
-    user: <><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></>,
-    refresh: <><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></>,
+// ── SVG ICONS ─────────────────────────────────────────────────────────
+const Ic=({n,s=22,w=1.6,c})=>{
+  const P={
+    home:<><path d="M3 12L12 3l9 9"/><path d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></>,
+    plus:<><path d="M12 5v14M5 12h14"/></>,
+    tag:<><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/></>,
+    hist:<><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/></>,
+    user:<><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></>,
+    filt:<><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></>,
+    ref:<><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></>,
+    out:<><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
   };
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" strokeWidth={stroke} stroke={color||'currentColor'} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
-      {paths[name]}
-    </svg>
-  );
+  return <svg viewBox="0 0 24 24" width={s} height={s} fill="none" strokeWidth={w} stroke={c||'currentColor'} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>{P[n]}</svg>;
 };
 
-// ── LOGIN PAGE ────────────────────────────────────────────────────────
-function LoginPage({ onLogin }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPass, setShowPass] = useState(false);
+// ── TOAST ─────────────────────────────────────────────────────────────
+const Toast=({msg,icon='✓'})=><div className="toast"><span>{icon}</span>{msg}</div>;
 
-  const handleLogin = async () => {
-    if (!username.trim() || !password) { setError('Please fill in all fields'); return; }
-    setLoading(true); setError('');
-    try {
-      const users = await sb.get('users', `username=eq.${encodeURIComponent(username.trim().toLowerCase())}&select=*`);
-      if (!users.length) { setError('Username not found'); setLoading(false); return; }
-      const user = users[0];
-      if (user.password !== hashPass(password)) { setError('Wrong password'); setLoading(false); return; }
-      const sess = { id: user.id, username: user.username, displayName: user.display_name, avatar: user.avatar };
-      saveSession(sess);
-      onLogin(sess);
-    } catch(e) {
-      setError('Connection error. Check your internet.');
-    }
+// ── LOGIN ─────────────────────────────────────────────────────────────
+function Login({onLogin}){
+  const [u,setU]=useState('');
+  const [p,setP]=useState('');
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [show,setShow]=useState(false);
+
+  const go=async()=>{
+    if(!u.trim()||!p){setErr('Fill in all fields');return}
+    setLoading(true);setErr('');
+    try{
+      const rows=await db.get('users',`username=eq.${encodeURIComponent(u.trim().toLowerCase())}&select=*`);
+      if(!rows.length){setErr('Username not found');setLoading(false);return}
+      const row=rows[0];
+      if(row.password!==hash(p)){setErr('Wrong password');setLoading(false);return}
+      const sess={id:row.id,username:row.username,displayName:row.display_name,avatar:row.avatar};
+      setSession(sess);onLogin(sess);
+    }catch{setErr('Connection error. Check internet.')}
     setLoading(false);
   };
 
-  return (
+  return(
     <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',padding:'0 28px'}}>
       <div style={{textAlign:'center',marginBottom:40}}>
         <div style={{fontSize:48,marginBottom:12}}>💸</div>
-        <div style={{fontFamily:'var(--font-head)',fontSize:32,fontWeight:800,letterSpacing:'-1px',color:'var(--text)'}}>Trackr</div>
-        <div style={{fontSize:14,color:'var(--text2)',marginTop:6}}>Your family expense tracker</div>
+        <div style={{fontFamily:'var(--fh)',fontSize:32,fontWeight:800,letterSpacing:'-1px'}}>Trackr</div>
+        <div style={{fontSize:14,color:'var(--t2)',marginTop:6}}>Your family expense tracker</div>
       </div>
-      <div style={{background:'var(--bg2)',border:'0.5px solid var(--border)',borderRadius:24,padding:24}}>
-        <div style={{fontFamily:'var(--font-head)',fontSize:18,fontWeight:700,marginBottom:20}}>Sign In</div>
-        {error && <div style={{background:'var(--red-bg)',border:'0.5px solid rgba(255,77,77,.2)',borderRadius:10,padding:'10px 14px',fontSize:13,color:'var(--red)',marginBottom:16}}>⚠️ {error}</div>}
-        <div className="form-group">
-          <label className="form-label">Username</label>
-          <input className="form-input" placeholder="Enter username" value={username} onChange={e=>{setUsername(e.target.value);setError('');}} onKeyDown={e=>e.key==='Enter'&&handleLogin()}/>
+      <div style={{background:'var(--bg2)',border:'.5px solid var(--b1)',borderRadius:24,padding:24}}>
+        <div style={{fontFamily:'var(--fh)',fontSize:18,fontWeight:700,marginBottom:20}}>Sign In</div>
+        {err&&<div style={{background:'var(--redbg)',border:'.5px solid rgba(255,77,77,.2)',borderRadius:10,padding:'10px 14px',fontSize:13,color:'var(--red)',marginBottom:16}}>⚠️ {err}</div>}
+        <div className="fg"><label className="fl">Username</label>
+          <input className="fi" placeholder="Enter username" value={u} onChange={e=>{setU(e.target.value);setErr('')}} onKeyDown={e=>e.key==='Enter'&&go()}/>
         </div>
-        <div className="form-group">
-          <label className="form-label">Password</label>
+        <div className="fg"><label className="fl">Password</label>
           <div style={{position:'relative'}}>
-            <input className="form-input" type={showPass?'text':'password'} placeholder="Enter password" value={password} onChange={e=>{setPassword(e.target.value);setError('');}} onKeyDown={e=>e.key==='Enter'&&handleLogin()} style={{paddingRight:48}}/>
-            <button onClick={()=>setShowPass(v=>!v)} style={{position:'absolute',right:14,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:16,padding:4}}>{showPass?'🙈':'👁️'}</button>
+            <input className="fi" type={show?'text':'password'} placeholder="Enter password" value={p} onChange={e=>{setP(e.target.value);setErr('')}} onKeyDown={e=>e.key==='Enter'&&go()} style={{paddingRight:48}}/>
+            <button onClick={()=>setShow(v=>!v)} style={{position:'absolute',right:14,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:16,padding:4}}>{show?'🙈':'👁️'}</button>
           </div>
         </div>
-        <button className="btn" onClick={handleLogin} disabled={loading}>{loading?'Signing in...':'Sign In →'}</button>
+        <button className="btn" onClick={go} disabled={loading}>{loading?'Signing in...':'Sign In →'}</button>
       </div>
-      <div style={{textAlign:'center',marginTop:16,fontSize:12,color:'var(--text3)'}}>
-        <span className="sync-dot online"/> Connected to cloud sync
+      <div style={{textAlign:'center',marginTop:16,fontSize:12,color:'var(--t3)'}}>
+        <span className="sync-dot on"/>Cloud synced
       </div>
     </div>
   );
 }
 
-// ── ADD TRANSACTION MODAL ────────────────────────────────────────────
-function AddTxModal({ groups, userId, onSave, onClose }) {
-  const [desc, setDesc] = useState('');
-  const [amount, setAmount] = useState('');
-  const [groupId, setGroupId] = useState(groups[0]?.id || '');
-  const [date, setDate] = useState(today());
-  const [photo, setPhoto] = useState(null);
-  const [cameraMode, setCameraMode] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const fileRef = useRef(null);
+// ── ADD TX MODAL ──────────────────────────────────────────────────────
+function AddTx({groups,userId,onSave,onClose}){
+  const [desc,setDesc]=useState('');
+  const [amt,setAmt]=useState('');
+  const [gid,setGid]=useState(groups[0]?.id||'');
+  const [date,setDate]=useState(tod());
+  const [photo,setPhoto]=useState(null);
+  const [cam,setCam]=useState(false);
+  const [ai,setAi]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const vidRef=useRef(null);
+  const streamRef=useRef(null);
+  const fileRef=useRef(null);
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
-      streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
-      setCameraMode(true);
-    } catch { fileRef.current?.click(); }
+  const startCam=async()=>{
+    try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});streamRef.current=s;if(vidRef.current)vidRef.current.srcObject=s;setCam(true);}
+    catch{fileRef.current?.click()}
   };
-  const stopCamera = () => { streamRef.current?.getTracks().forEach(t=>t.stop()); streamRef.current=null; setCameraMode(false); };
-  const capturePhoto = () => {
-    if (!videoRef.current) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth; canvas.height = videoRef.current.videoHeight;
-    canvas.getContext('2d').drawImage(videoRef.current,0,0);
-    const dataUrl = canvas.toDataURL('image/jpeg',0.7);
-    setPhoto(dataUrl); stopCamera(); analyzeReceipt(dataUrl);
+  const stopCam=()=>{streamRef.current?.getTracks().forEach(t=>t.stop());streamRef.current=null;setCam(false)};
+  const snap=()=>{
+    if(!vidRef.current)return;
+    const c=document.createElement('canvas');c.width=vidRef.current.videoWidth;c.height=vidRef.current.videoHeight;
+    c.getContext('2d').drawImage(vidRef.current,0,0);
+    const d=c.toDataURL('image/jpeg',.7);setPhoto(d);stopCam();analyze(d);
   };
-  const handleFile = (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => { setPhoto(ev.target.result); analyzeReceipt(ev.target.result); };
-    reader.readAsDataURL(file);
+  const onFile=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();r.onload=ev=>{setPhoto(ev.target.result);analyze(ev.target.result)};r.readAsDataURL(f);
   };
-  const analyzeReceipt = async (dataUrl) => {
-    setAnalyzing(true);
-    try {
-      const base64 = dataUrl.split(',')[1];
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{ role:'user', content:[
-          { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:base64 } },
-          { type:'text', text:'This is a receipt. Extract: 1) merchant/item name (max 30 chars), 2) total IDR amount (number only). Respond ONLY as JSON: {"desc":"...","amount":12345}. If not a receipt return {"desc":"","amount":0}' }
-        ]}]})
-      });
-      const data = await resp.json();
-      const text = data.content?.map(c=>c.text||'').join('');
-      const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
-      if (parsed.desc) setDesc(parsed.desc);
-      if (parsed.amount > 0) setAmount(String(parsed.amount));
-    } catch {}
-    setAnalyzing(false);
+  const analyze=async(dataUrl)=>{
+    setAi(true);
+    try{
+      const b64=dataUrl.split(',')[1];
+      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Receipt/struk. Extract: 1) name max 30 chars, 2) total IDR number only. JSON only: {"desc":"...","amount":0}'}]}]})});
+      const d=await res.json();
+      const txt=d.content?.map(c=>c.text||'').join('');
+      const parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
+      if(parsed.desc)setDesc(parsed.desc);
+      if(parsed.amount>0)setAmt(String(parsed.amount));
+    }catch{}
+    setAi(false);
   };
-  const handleSave = async () => {
-    if (!desc.trim() || !amount || !groupId) return;
+  const save=async()=>{
+    if(!desc.trim()||!amt||!gid)return;
     setSaving(true);
-    const tx = { id:'t'+Date.now(), user_id:userId, description:desc.trim(), amount:parseInt(amount.replace(/\D/g,'')), group_id:groupId, date, photo: photo||null };
-    await onSave(tx);
-    setSaving(false);
-    onClose();
+    const tx={id:'t'+Date.now(),user_id:userId,description:desc.trim(),amount:parseInt(amt.replace(/\D/g,'')),group_id:gid,date,photo:photo||null};
+    await onSave(tx);setSaving(false);onClose();
   };
 
-  return (
-    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+  return(
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
-        <div className="modal-scroll">
-        <div className="modal-handle"/>
-        <div className="modal-title">Add Transaction</div>
-        {!photo ? (
-          <div style={{marginBottom:18}}>
-            {cameraMode ? (
-              <div>
-                <div className="camera-zone" style={{aspectRatio:'4/3'}}>
-                  <video ref={videoRef} autoPlay playsInline style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',borderRadius:'var(--radius)'}}/>
+        <div className="modal-body">
+          <div className="modal-handle"/>
+          <div className="modal-title">Add Transaction</div>
+          {!photo?(
+            cam?(
+              <div style={{marginBottom:18}}>
+                <div style={{width:'100%',aspectRatio:'4/3',borderRadius:'var(--r)',overflow:'hidden',position:'relative',background:'#000'}}>
+                  <video ref={vidRef} autoPlay playsInline style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}}/>
                 </div>
-                <div className="camera-btns">
-                  <button className="btn btn-ghost" onClick={stopCamera}>Cancel</button>
-                  <button className="btn" onClick={capturePhoto}>📸 Capture</button>
+                <div style={{display:'flex',gap:8,marginTop:8}}>
+                  <button className="btn ghost" onClick={stopCam}>Cancel</button>
+                  <button className="btn" onClick={snap}>📸 Capture</button>
                 </div>
               </div>
-            ) : (
-              <div>
-                <div className="camera-zone" style={{height:90}} onClick={startCamera}>
-                  <div className="camera-icon">📷</div>
-                  <div className="camera-zone-label">Tap to scan receipt</div>
+            ):(
+              <div style={{marginBottom:18}}>
+                <div className="camera-zone" onClick={startCam}>
+                  <span style={{fontSize:24}}>📷</span>
+                  <span style={{fontSize:13,color:'var(--t2)'}}>Tap to scan receipt</span>
                 </div>
-                <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleFile}/>
-                <button className="btn btn-ghost" style={{marginTop:8}} onClick={()=>fileRef.current?.click()}>📁 Upload from Gallery</button>
+                <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
+                <button className="btn ghost" style={{marginTop:8}} onClick={()=>fileRef.current?.click()}>📁 Upload from Gallery</button>
               </div>
-            )}
+            )
+          ):(
+            <div className="photo-wrap" style={{marginBottom:18}}>
+              <img src={photo} alt="receipt"/>
+              <button className="photo-rm" onClick={()=>setPhoto(null)}>✕</button>
+              {ai&&<div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.6)',borderRadius:'var(--r)',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8}}><div style={{fontSize:24,color:'var(--a)'}}>✨</div><div style={{color:'white',fontSize:13}}>AI reading receipt...</div></div>}
+            </div>
+          )}
+          {ai&&<div style={{background:'var(--bluebg)',border:'.5px solid rgba(77,159,255,.2)',borderRadius:8,padding:'8px 12px',fontSize:12,color:'var(--blue)',marginBottom:14}}>🤖 Analyzing receipt...</div>}
+          <div className="fg"><label className="fl">Description</label><input className="fi" placeholder="e.g. Lunch at warung" value={desc} onChange={e=>setDesc(e.target.value)}/></div>
+          <div className="fg"><label className="fl">Amount (IDR)</label><input className="fi" type="number" inputMode="numeric" placeholder="0" value={amt} onChange={e=>setAmt(e.target.value)}/></div>
+          <div className="fg"><label className="fl">Category</label>
+            <select className="fi" value={gid} onChange={e=>setGid(e.target.value)}>
+              {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
+            </select>
           </div>
-        ) : (
-          <div className="photo-preview" style={{marginBottom:18}}>
-            <img src={photo} alt="receipt"/>
-            <button className="photo-remove" onClick={()=>setPhoto(null)}>✕</button>
-            {analyzing && <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.6)',borderRadius:'var(--radius)',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8}}><div style={{color:'var(--accent)',fontSize:24}}>✨</div><div style={{color:'white',fontSize:13}}>AI reading receipt...</div></div>}
-          </div>
-        )}
-        {analyzing && <div style={{background:'var(--blue-bg)',border:'0.5px solid rgba(77,159,255,.2)',borderRadius:8,padding:'8px 12px',fontSize:12,color:'var(--blue)',marginBottom:14}}>🤖 Analyzing receipt with AI...</div>}
-        <div className="form-group">
-          <label className="form-label">Description</label>
-          <input className="form-input" placeholder="e.g. Lunch at warung" value={desc} onChange={e=>setDesc(e.target.value)}/>
+          <div className="fg"><label className="fl">Date</label><input className="fi" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
         </div>
-        <div className="form-group">
-          <label className="form-label">Amount (IDR)</label>
-          <input className="form-input" type="number" inputMode="numeric" placeholder="0" value={amount} onChange={e=>setAmount(e.target.value)}/>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Category</label>
-          <select className="form-input" value={groupId} onChange={e=>setGroupId(e.target.value)}>
-            {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Date</label>
-          <input className="form-input" type="date" value={date} onChange={e=>setDate(e.target.value)}/>
-        </div>
-        </div>{/* end modal-scroll */}
-        <div className="modal-footer">
+        <div className="modal-foot">
           <div className="btn-row">
-            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn" onClick={handleSave} disabled={!desc||!amount||!groupId||saving}>{saving?'Saving...':'Save'}</button>
+            <button className="btn ghost" onClick={onClose}>Cancel</button>
+            <button className="btn" onClick={save} disabled={!desc||!amt||!gid||saving}>{saving?'Saving...':'Save'}</button>
           </div>
         </div>
       </div>
@@ -429,35 +384,25 @@ function AddTxModal({ groups, userId, onSave, onClose }) {
   );
 }
 
-// ── DASHBOARD ────────────────────────────────────────────────────────
-function Dashboard({ transactions, groups, budgets, onRefresh, syncing }) {
-  const [selMonth, setSelMonth] = useState(new Date().getMonth());
-  const [selYear] = useState(new Date().getFullYear());
-  const [weekFrom, setWeekFrom] = useState(() => { const d=new Date(); d.setDate(d.getDate()-6); return d.toISOString().split('T')[0]; });
-  const [weekTo, setWeekTo] = useState(today());
-  const [recentLimit, setRecentLimit] = useState(5);
-  const [filterGroup, setFilterGroup] = useState('all');
+// ── DASHBOARD ─────────────────────────────────────────────────────────
+function Dashboard({txs,groups,budgets,onRefresh,syncing}){
+  const [mon,setMon]=useState(new Date().getMonth());
+  const [yr]=useState(new Date().getFullYear());
+  const [wf,setWf]=useState(()=>{const d=new Date();d.setDate(d.getDate()-6);return d.toISOString().split('T')[0]});
+  const [wt,setWt]=useState(tod());
+  const [lim,setLim]=useState(5);
+  const [fg,setFg]=useState('all');
 
-  const monthTx = useMemo(()=>transactions.filter(t=>{const d=new Date(t.date);return d.getMonth()===selMonth&&d.getFullYear()===selYear;}),[transactions,selMonth,selYear]);
-  const weekTx = useMemo(()=>transactions.filter(t=>t.date>=weekFrom&&t.date<=weekTo),[transactions,weekFrom,weekTo]);
-  const monthTotal = useMemo(()=>monthTx.reduce((s,t)=>s+t.amount,0),[monthTx]);
-  const weekTotal = useMemo(()=>weekTx.reduce((s,t)=>s+t.amount,0),[weekTx]);
-  const byGroup = useMemo(()=>{const m={};monthTx.forEach(t=>{m[t.group_id]=(m[t.group_id]||0)+t.amount;});return m;},[monthTx]);
+  const mTx=useMemo(()=>txs.filter(t=>{const d=new Date(t.date);return d.getMonth()===mon&&d.getFullYear()===yr}),[txs,mon,yr]);
+  const wTx=useMemo(()=>txs.filter(t=>t.date>=wf&&t.date<=wt),[txs,wf,wt]);
+  const mTotal=useMemo(()=>mTx.reduce((s,t)=>s+t.amount,0),[mTx]);
+  const wTotal=useMemo(()=>wTx.reduce((s,t)=>s+t.amount,0),[wTx]);
+  const byG=useMemo(()=>{const m={};mTx.forEach(t=>{m[t.group_id]=(m[t.group_id]||0)+t.amount});return m},[mTx]);
+  const wDays=useMemo(()=>{const a=[];for(let i=6;i>=0;i--){const d=new Date(wt);d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];const tot=txs.filter(t=>t.date===ds).reduce((s,t)=>s+t.amount,0);a.push({date:ds,tot,label:dayN(ds),isToday:ds===tod()})}return a},[txs,wt]);
+  const maxD=Math.max(...wDays.map(d=>d.tot),1);
+  const recent=useMemo(()=>{let a=[...txs].sort((a,b)=>b.date.localeCompare(a.date));if(fg!=='all')a=a.filter(t=>t.group_id===fg);return a.slice(0,lim)},[txs,fg,lim]);
 
-  const weekDays = useMemo(()=>{
-    const days=[];
-    for(let i=6;i>=0;i--){const d=new Date(weekTo);d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];const total=transactions.filter(t=>t.date===ds).reduce((s,t)=>s+t.amount,0);days.push({date:ds,total,label:dayName(ds),isToday:ds===today()});}
-    return days;
-  },[transactions,weekTo]);
-  const maxDay = Math.max(...weekDays.map(d=>d.total),1);
-
-  const recentTx = useMemo(()=>{
-    let tx=[...transactions].sort((a,b)=>b.date.localeCompare(a.date));
-    if(filterGroup!=='all') tx=tx.filter(t=>t.group_id===filterGroup);
-    return tx.slice(0,recentLimit);
-  },[transactions,filterGroup,recentLimit]);
-
-  return (
+  return(
     <div className="page-scroll">
       <div className="page-header">
         <div>
@@ -465,55 +410,50 @@ function Dashboard({ transactions, groups, budgets, onRefresh, syncing }) {
           <div className="page-subtitle">{new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'})}</div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <div style={{fontSize:11,color:'var(--text3)',display:'flex',alignItems:'center'}}>
-            <span className={`sync-dot ${syncing?'syncing':'online'}`}/>
-            {syncing?'Syncing...':'Synced'}
-          </div>
-          <div className="icon-btn" onClick={onRefresh}><Icon name="refresh" size={16}/></div>
+          <span style={{fontSize:11,color:'var(--t3)',display:'flex',alignItems:'center'}}><span className={`sync-dot ${syncing?'spin':'on'}`}/>{syncing?'Syncing...':'Synced'}</span>
+          <div className="icon-btn" onClick={onRefresh}><Ic n="ref" s={16}/></div>
         </div>
       </div>
 
-      <div className="pills-scroll">
-        {monthNames.map((m,i)=><div key={i} className={`filter-chip ${selMonth===i?'active':''}`} onClick={()=>setSelMonth(i)}>{m.slice(0,3)}</div>)}
+      <div className="pills">
+        {MN.map((m,i)=><div key={i} className={`chip ${mon===i?'on':''}`} onClick={()=>setMon(i)}>{m.slice(0,3)}</div>)}
       </div>
 
-      <div className="hero-card fade-in">
-        <div className="hero-label">TOTAL SPENT — {monthNames[selMonth].toUpperCase()}</div>
-        <div className="hero-amount"><span className="currency">Rp</span>{monthTotal.toLocaleString('id-ID')}</div>
-        <div className="hero-period">{monthTx.length} transactions this month</div>
-        {(()=>{const tb=budgets.filter(b=>b.type==='monthly').reduce((s,b)=>s+b.amount,0);if(!tb)return null;const pct=Math.min((monthTotal/tb)*100,100);return(<div className="hero-bar"><div className="hero-bar-track"><div className="hero-bar-fill" style={{width:`${pct}%`,background:pct>90?'#ff4d4d':pct>70?'#ffb347':'#c8f560'}}/></div><div className="hero-bar-labels"><span>{pct.toFixed(0)}% of budget</span><span>{fmtIDR(tb)}</span></div></div>);})()}
+      <div className="hero-card fade">
+        <div className="hero-label">TOTAL SPENT — {MN[mon].toUpperCase()}</div>
+        <div className="hero-amt"><span className="hero-cur">Rp</span>{mTotal.toLocaleString('id-ID')}</div>
+        <div className="hero-sub">{mTx.length} transactions this month</div>
+        {(()=>{const tb=budgets.filter(b=>b.type==='monthly').reduce((s,b)=>s+b.amount,0);if(!tb)return null;const pct=Math.min((mTotal/tb)*100,100);return(<><div className="bar-track"><div className="bar-fill" style={{width:`${pct}%`,background:pct>90?'#ff4d4d':pct>70?'#ffb347':'#c8f560'}}/></div><div className="bar-labels"><span>{pct.toFixed(0)}% of budget</span><span>{idr(tb)}</span></div></>)})()}
       </div>
 
       <div className="section">
         <div className="stats-grid">
-          <div className="stat-card"><div className="stat-label">This Week</div><div className="stat-value accent">Rp {Math.round(weekTotal/1000)}K</div><div className="stat-sub">{weekTx.length} transactions</div></div>
-          <div className="stat-card"><div className="stat-label">Avg/Day</div><div className="stat-value">Rp {monthTx.length?Math.round(monthTotal/30/1000):0}K</div><div className="stat-sub">this month</div></div>
-          <div className="stat-card"><div className="stat-label">Top Category</div><div className="stat-value" style={{fontSize:13}}>{(()=>{const top=Object.entries(byGroup).sort((a,b)=>b[1]-a[1])[0];if(!top)return'—';const g=groups.find(x=>x.id===top[0]);return g?`${g.emoji} ${g.name}`:'—';})()}</div></div>
-          <div className="stat-card"><div className="stat-label">Categories</div><div className="stat-value">{Object.keys(byGroup).length}</div><div className="stat-sub">active this month</div></div>
+          <div className="stat-card"><div className="stat-label">This Week</div><div className="stat-value ac">Rp {Math.round(wTotal/1000)}K</div><div className="stat-sub">{wTx.length} tx</div></div>
+          <div className="stat-card"><div className="stat-label">Avg/Day</div><div className="stat-value">Rp {Math.round(mTotal/30/1000)}K</div><div className="stat-sub">this month</div></div>
+          <div className="stat-card"><div className="stat-label">Top Category</div><div className="stat-value" style={{fontSize:13}}>{(()=>{const top=Object.entries(byG).sort((a,b)=>b[1]-a[1])[0];if(!top)return'—';const g=groups.find(x=>x.id===top[0]);return g?`${g.emoji} ${g.name}`:'—'})()}</div></div>
+          <div className="stat-card"><div className="stat-label">Active Cat.</div><div className="stat-value">{Object.keys(byG).length}</div><div className="stat-sub">this month</div></div>
         </div>
       </div>
 
       <div className="section">
-        <div className="flex-between" style={{marginBottom:12}}><div className="section-label" style={{margin:0}}>Weekly Trend</div></div>
+        <div className="fxb" style={{marginBottom:12}}><div className="section-label" style={{margin:0}}>Weekly Trend</div></div>
         <div className="card" style={{paddingBottom:8}}>
-          <div style={{display:'flex',gap:8,marginBottom:12,alignItems:'center',flexWrap:'wrap'}}>
-            <input type="date" className="filter-input-sm" value={weekFrom} onChange={e=>setWeekFrom(e.target.value)} style={{flex:1}}/>
-            <span style={{color:'var(--text3)',fontSize:12}}>to</span>
-            <input type="date" className="filter-input-sm" value={weekTo} onChange={e=>setWeekTo(e.target.value)} style={{flex:1}}/>
+          <div style={{display:'flex',gap:8,marginBottom:12,alignItems:'center'}}>
+            <input type="date" className="fi-sm" value={wf} onChange={e=>setWf(e.target.value)}/>
+            <span style={{color:'var(--t3)',fontSize:12,flexShrink:0}}>to</span>
+            <input type="date" className="fi-sm" value={wt} onChange={e=>setWt(e.target.value)}/>
           </div>
-          <div className="week-chart">
-            {weekDays.map(d=>(
-              <div key={d.date} className="week-bar-wrap">
-                <div className="week-bar-track">
-                  <div className="week-bar-fill" style={{height:`${Math.round((d.total/maxDay)*100)}%`,background:d.isToday?'#c8f560':'rgba(200,245,96,0.35)'}}/>
-                </div>
-                <div className={`week-day-label ${d.isToday?'today':''}`}>{d.label}</div>
+          <div className="wchart">
+            {wDays.map(d=>(
+              <div key={d.date} className="wbar-wrap">
+                <div className="wbar-track"><div className="wbar-fill" style={{height:`${Math.round((d.tot/maxD)*100)}%`,background:d.isToday?'#c8f560':'rgba(200,245,96,.35)'}}/></div>
+                <div className={`wday ${d.isToday?'today':''}`}>{d.label}</div>
               </div>
             ))}
           </div>
-          <div style={{marginTop:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div style={{fontSize:12,color:'var(--text2)'}}>Week total</div>
-            <div style={{fontFamily:'var(--font-head)',fontSize:15,fontWeight:700,color:'var(--accent)'}}>{fmtIDR(weekTotal)}</div>
+          <div style={{marginTop:10,display:'flex',justifyContent:'space-between'}}>
+            <span style={{fontSize:12,color:'var(--t2)'}}>Week total</span>
+            <span style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,color:'var(--a)'}}>{idr(wTotal)}</span>
           </div>
         </div>
       </div>
@@ -524,18 +464,18 @@ function Dashboard({ transactions, groups, budgets, onRefresh, syncing }) {
           <div className="card">
             {groups.map(g=>{
               const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
-              const spent=byGroup[g.id]||0;
+              const spent=byG[g.id]||0;
               if(!b&&!spent)return null;
               const budget=b?.amount||0;
               const pct=budget?Math.min((spent/budget)*100,100):0;
-              const status=!budget?'none':pct>90?'over':pct>70?'warn':'safe';
+              const st=!budget?'n':pct>90?'o':pct>70?'w':'s';
               return(
-                <div key={g.id} className="progress-wrap">
-                  <div className="progress-header">
-                    <div className="progress-name">{g.emoji} {g.name}</div>
-                    <div className="progress-vals"><div className="progress-spent">{fmtIDR(spent)}</div><div className="progress-budget">{budget?`of ${fmtIDR(budget)}`:'no budget'}</div></div>
+                <div key={g.id} className="prog-wrap">
+                  <div className="prog-hd">
+                    <div className="prog-name">{g.emoji} {g.name}</div>
+                    <div className="prog-right"><div className="prog-spent">{idr(spent)}</div><div className="prog-bud">{budget?`of ${idr(budget)}`:'no budget'}</div></div>
                   </div>
-                  {budget>0&&<div className="progress-track"><div className="progress-fill" style={{width:`${pct}%`,background:status==='over'?'#ff4d4d':status==='warn'?'#ffb347':g.color}}/></div>}
+                  {budget>0&&<div className="prog-track"><div className="prog-fill" style={{width:`${pct}%`,background:st==='o'?'#ff4d4d':st==='w'?'#ffb347':g.color}}/></div>}
                 </div>
               );
             })}
@@ -544,66 +484,62 @@ function Dashboard({ transactions, groups, budgets, onRefresh, syncing }) {
       )}
 
       <div className="section">
-        <div className="flex-between" style={{marginBottom:12}}><div className="section-label" style={{margin:0}}>Recent Transactions</div></div>
+        <div className="fxb" style={{marginBottom:10}}><div className="section-label" style={{margin:0}}>Recent Transactions</div></div>
         <div style={{display:'flex',gap:8,overflowX:'auto',marginBottom:12}}>
-          <div className={`filter-chip ${filterGroup==='all'?'active':''}`} onClick={()=>setFilterGroup('all')}>All</div>
-          {groups.map(g=><div key={g.id} className={`filter-chip ${filterGroup===g.id?'active':''}`} onClick={()=>setFilterGroup(g.id)} style={{flexShrink:0}}>{g.emoji} {g.name}</div>)}
+          <div className={`chip ${fg==='all'?'on':''}`} onClick={()=>setFg('all')}>All</div>
+          {groups.map(g=><div key={g.id} className={`chip ${fg===g.id?'on':''}`} onClick={()=>setFg(g.id)} style={{flexShrink:0}}>{g.emoji} {g.name}</div>)}
         </div>
         <div className="card" style={{padding:'4px 18px'}}>
-          {recentTx.length===0?<div className="empty" style={{padding:24}}><div className="empty-icon">💸</div><div className="empty-text">No transactions yet</div></div>:
-            recentTx.map(t=>{const g=groups.find(x=>x.id===t.group_id);return(
+          {recent.length===0?<div className="empty"><div className="empty-icon">💸</div><div>No transactions yet</div></div>:
+            recent.map(t=>{const g=groups.find(x=>x.id===t.group_id);return(
               <div key={t.id} className="tx-item">
                 <div className="tx-icon" style={{background:`${g?.color||'#888'}20`}}>{g?.emoji||'💰'}</div>
                 <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} · {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</div></div>
-                {t.photo&&<img src={t.photo} alt="" className="tx-img-thumb"/>}
-                <div><div className="tx-amount">-{fmtIDR(t.amount)}</div><div className="tx-date">{t.date===today()?'Today':t.date}</div></div>
+                {t.photo&&<img src={t.photo} alt="" className="tx-thumb"/>}
+                <div><div className="tx-amt">-{idr(t.amount)}</div><div className="tx-date">{t.date===tod()?'Today':t.date}</div></div>
               </div>
             );})}
         </div>
-        {transactions.length>recentLimit&&<button className="btn btn-ghost" style={{marginTop:10,fontSize:13}} onClick={()=>setRecentLimit(v=>v+5)}>Load more ({transactions.length-recentLimit} remaining)</button>}
+        {txs.length>lim&&<button className="btn ghost" style={{marginTop:10,fontSize:13}} onClick={()=>setLim(v=>v+5)}>Load more ({txs.length-lim} remaining)</button>}
       </div>
     </div>
   );
 }
 
-// ── TRANSACTIONS PAGE ────────────────────────────────────────────────
-function Transactions({ transactions, groups, onDelete }) {
-  const [filterGroup, setFilterGroup] = useState('all');
-  const [search, setSearch] = useState('');
-  const [sortDir, setSortDir] = useState('desc');
-
-  const filtered = useMemo(()=>{
-    let tx=[...transactions];
-    if(filterGroup!=='all') tx=tx.filter(t=>t.group_id===filterGroup);
-    if(search) tx=tx.filter(t=>t.description.toLowerCase().includes(search.toLowerCase()));
-    tx.sort((a,b)=>sortDir==='desc'?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
-    return tx;
-  },[transactions,filterGroup,search,sortDir]);
-
-  return (
+// ── HISTORY ───────────────────────────────────────────────────────────
+function History({txs,groups,onDelete}){
+  const [fg,setFg]=useState('all');
+  const [q,setQ]=useState('');
+  const [dir,setDir]=useState('desc');
+  const list=useMemo(()=>{
+    let a=[...txs];
+    if(fg!=='all')a=a.filter(t=>t.group_id===fg);
+    if(q)a=a.filter(t=>t.description.toLowerCase().includes(q.toLowerCase()));
+    a.sort((a,b)=>dir==='desc'?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
+    return a;
+  },[txs,fg,q,dir]);
+  return(
     <div className="page-scroll">
       <div className="page-header">
-        <div><div className="page-title">Transactions</div><div className="page-subtitle">{filtered.length} records · {fmtIDR(filtered.reduce((s,t)=>s+t.amount,0))}</div></div>
-        <div className="icon-btn" onClick={()=>setSortDir(d=>d==='desc'?'asc':'desc')}><Icon name="filter" size={18}/></div>
+        <div><div className="page-title">History</div><div className="page-subtitle">{list.length} records · {idr(list.reduce((s,t)=>s+t.amount,0))}</div></div>
+        <div className="icon-btn" onClick={()=>setDir(d=>d==='desc'?'asc':'desc')}><Ic n="filt" s={18}/></div>
       </div>
-      <div style={{padding:'0 20px',marginBottom:12}}>
-        <input className="form-input" placeholder="🔍  Search..." value={search} onChange={e=>setSearch(e.target.value)}/>
-      </div>
-      <div className="pills-scroll">
-        <div className={`filter-chip ${filterGroup==='all'?'active':''}`} onClick={()=>setFilterGroup('all')}>All</div>
-        {groups.map(g=><div key={g.id} className={`filter-chip ${filterGroup===g.id?'active':''}`} onClick={()=>setFilterGroup(g.id)}>{g.emoji} {g.name}</div>)}
+      <div style={{padding:'0 20px',marginBottom:12}}><input className="fi" placeholder="🔍  Search..." value={q} onChange={e=>setQ(e.target.value)}/></div>
+      <div className="pills">
+        <div className={`chip ${fg==='all'?'on':''}`} onClick={()=>setFg('all')}>All</div>
+        {groups.map(g=><div key={g.id} className={`chip ${fg===g.id?'on':''}`} onClick={()=>setFg(g.id)}>{g.emoji} {g.name}</div>)}
       </div>
       <div className="section">
-        {filtered.length===0?<div className="empty"><div className="empty-icon">🔍</div><div className="empty-text">No transactions found</div></div>:
+        {list.length===0?<div className="empty"><div className="empty-icon">🔍</div><div>No transactions found</div></div>:
           <div className="card" style={{padding:'4px 18px'}}>
-            {filtered.map(t=>{const g=groups.find(x=>x.id===t.group_id);return(
+            {list.map(t=>{const g=groups.find(x=>x.id===t.group_id);return(
               <div key={t.id} className="tx-item">
                 <div className="tx-icon" style={{background:`${g?.color||'#888'}20`}}>{g?.emoji||'💰'}</div>
                 <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} · {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div></div>
-                {t.photo&&<img src={t.photo} alt="" className="tx-img-thumb"/>}
+                {t.photo&&<img src={t.photo} alt="" className="tx-thumb"/>}
                 <div style={{textAlign:'right'}}>
-                  <div className="tx-amount">-{fmtIDR(t.amount)}</div>
-                  <button onClick={()=>onDelete(t.id)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:12,marginTop:4}}>🗑</button>
+                  <div className="tx-amt">-{idr(t.amount)}</div>
+                  <button onClick={()=>onDelete(t.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:12,marginTop:4}}>🗑</button>
                 </div>
               </div>
             );})}
@@ -613,95 +549,81 @@ function Transactions({ transactions, groups, onDelete }) {
   );
 }
 
-// ── MASTER PAGE ──────────────────────────────────────────────────────
-function Master({ groups, setGroups, budgets, setBudgets, currentUser, onUsersChange }) {
-  const [tab, setTab] = useState('groups');
-  const [users, setUsers] = useState([]);
-  const [showAddGroup, setShowAddGroup] = useState(false);
-  const [showAddBudget, setShowAddBudget] = useState(false);
-  const [showAddUser, setShowAddUser] = useState(false);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupEmoji, setNewGroupEmoji] = useState('🏠');
-  const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
-  const [editBudget, setEditBudget] = useState(null);
-  const [budgetGroupId, setBudgetGroupId] = useState('');
-  const [budgetAmount, setBudgetAmount] = useState('');
-  const [budgetType, setBudgetType] = useState('monthly');
-  const [budgetFrom, setBudgetFrom] = useState(()=>{const d=new Date();d.setDate(1);return d.toISOString().split('T')[0];});
-  const [budgetTo, setBudgetTo] = useState(()=>{const d=new Date(new Date().getFullYear(),new Date().getMonth()+1,0);return d.toISOString().split('T')[0];});
-  const [newUsername, setNewUsername] = useState('');
-  const [newDisplayName, setNewDisplayName] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newAvatar, setNewAvatar] = useState('😊');
-  const [userError, setUserError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(null);
+// ── MASTER ────────────────────────────────────────────────────────────
+function Master({groups,setGroups,budgets,setBudgets,currentUser}){
+  const [tab,setTab]=useState('groups');
+  const [users,setUsers]=useState([]);
+  // group form
+  const [showGrp,setShowGrp]=useState(false);
+  const [gName,setGName]=useState('');
+  const [gEmoji,setGEmoji]=useState('🏠');
+  const [gColor,setGColor]=useState(COLORS[0]);
+  // budget form
+  const [showBud,setShowBud]=useState(false);
+  const [editBud,setEditBud]=useState(null);
+  const [bGid,setBGid]=useState('');
+  const [bAmt,setBAmt]=useState('');
+  const [bType,setBType]=useState('monthly');
+  const [bFrom,setBFrom]=useState(()=>{const d=new Date();d.setDate(1);return d.toISOString().split('T')[0]});
+  const [bTo,setBTo]=useState(()=>{const d=new Date(new Date().getFullYear(),new Date().getMonth()+1,0);return d.toISOString().split('T')[0]});
+  // user form
+  const [showUsr,setShowUsr]=useState(false);
+  const [uName,setUName]=useState('');
+  const [uDisp,setUDisp]=useState('');
+  const [uPass,setUPass]=useState('');
+  const [uAv,setUAv]=useState('😊');
+  const [uErr,setUErr]=useState('');
+  const [saving,setSaving]=useState(false);
+  const [toast,setToast]=useState(null);
+  const showT=(msg,icon='✓')=>{setToast({msg,icon});setTimeout(()=>setToast(null),2500)};
 
-  const showToast = (msg, icon='✓') => { setToast({msg,icon}); setTimeout(()=>setToast(null),2500); };
+  useEffect(()=>{if(tab==='users')loadUsers()},[tab]);
+  const loadUsers=async()=>{try{const u=await db.get('users','select=id,username,display_name,avatar&order=created_at.asc');setUsers(u)}catch{}};
 
-  useEffect(()=>{ if(tab==='users') loadUsers(); },[tab]);
-  const loadUsers = async () => { try { const u=await sb.get('users','select=id,username,display_name,avatar&order=created_at.asc'); setUsers(u); } catch {} };
-
-  const addGroup = async () => {
-    if(!newGroupName.trim()) return; setSaving(true);
-    try {
-      const g={id:'g'+Date.now(),user_id:currentUser.id,name:newGroupName.trim(),emoji:newGroupEmoji,color:newGroupColor};
-      await sb.post('groups',g);
-      setGroups(gs=>[...gs,g]); setNewGroupName(''); setShowAddGroup(false); showToast('Category added');
-    } catch { showToast('Failed to save','⚠️'); }
+  const addGrp=async()=>{
+    if(!gName.trim())return;setSaving(true);
+    try{const g={id:'g'+Date.now(),user_id:currentUser.id,name:gName.trim(),emoji:gEmoji,color:gColor};await db.post('groups',g);setGroups(gs=>[...gs,g]);setGName('');setShowGrp(false);showT('Category added')}
+    catch{showT('Failed','⚠️')}
     setSaving(false);
   };
+  const delGrp=async(id)=>{try{await db.del('groups',id);setGroups(gs=>gs.filter(x=>x.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
 
-  const deleteGroup = async (id) => {
-    try { await sb.delete('groups',id); setGroups(gs=>gs.filter(x=>x.id!==id)); showToast('Category deleted','🗑'); } catch { showToast('Failed to delete','⚠️'); }
-  };
-
-  const saveBudget = async () => {
-    if(!budgetGroupId||!budgetAmount) return; setSaving(true);
-    try {
-      const entry={id:editBudget?.id||'b'+Date.now(),user_id:currentUser.id,group_id:budgetGroupId,amount:parseInt(budgetAmount.replace(/\D/g,'')),type:budgetType,date_from:budgetFrom,date_to:budgetTo};
-      if(editBudget){await sb.patch('budgets',editBudget.id,entry);setBudgets(bs=>bs.map(b=>b.id===editBudget.id?entry:b));}
-      else{await sb.post('budgets',entry);setBudgets(bs=>[...bs,entry]);}
-      setShowAddBudget(false);setEditBudget(null);setBudgetAmount('');setBudgetGroupId('');
-      showToast('Budget saved');
-    } catch { showToast('Failed to save','⚠️'); }
+  const saveBud=async()=>{
+    if(!bGid||!bAmt)return;setSaving(true);
+    try{
+      const e={id:editBud?.id||'b'+Date.now(),user_id:currentUser.id,group_id:bGid,amount:parseInt(bAmt.replace(/\D/g,'')),type:bType,date_from:bFrom,date_to:bTo};
+      if(editBud){await db.patch('budgets',editBud.id,e);setBudgets(bs=>bs.map(b=>b.id===editBud.id?e:b))}
+      else{await db.post('budgets',e);setBudgets(bs=>[...bs,e])}
+      setShowBud(false);setEditBud(null);setBAmt('');setBGid('');showT('Budget saved');
+    }catch{showT('Failed','⚠️')}
     setSaving(false);
   };
+  const delBud=async(id)=>{try{await db.del('budgets',id);setBudgets(bs=>bs.filter(b=>b.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
+  const openEditBud=(b)=>{setEditBud(b);setBGid(b.group_id);setBAmt(String(b.amount));setBType(b.type);setBFrom(b.date_from||'');setBTo(b.date_to||'');setShowBud(true)};
 
-  const deleteBudget = async (id) => {
-    try { await sb.delete('budgets',id); setBudgets(bs=>bs.filter(b=>b.id!==id)); showToast('Budget deleted','🗑'); } catch { showToast('Failed to delete','⚠️'); }
-  };
-
-  const openEditBudget = (b) => { setEditBudget(b);setBudgetGroupId(b.group_id);setBudgetAmount(String(b.amount));setBudgetType(b.type);setBudgetFrom(b.date_from||'');setBudgetTo(b.date_to||'');setShowAddBudget(true); };
-
-  const addUser = async () => {
-    setUserError('');
-    if(!newUsername.trim()||!newPassword||!newDisplayName.trim()){setUserError('All fields required');return;}
-    if(newPassword.length<4){setUserError('Password min. 4 chars');return;}
+  const addUsr=async()=>{
+    setUErr('');
+    if(!uName.trim()||!uPass||!uDisp.trim()){setUErr('All fields required');return}
+    if(uPass.length<4){setUErr('Password min. 4 chars');return}
     setSaving(true);
-    try {
-      const exists=await sb.get('users',`username=eq.${encodeURIComponent(newUsername.trim().toLowerCase())}&select=id`);
-      if(exists.length){setUserError('Username already taken');setSaving(false);return;}
-      const u={id:'u'+Date.now(),username:newUsername.trim().toLowerCase(),display_name:newDisplayName.trim(),password:hashPass(newPassword),avatar:newAvatar};
-      await sb.post('users',u);
-      setNewUsername('');setNewDisplayName('');setNewPassword('');setNewAvatar('😊');
-      setShowAddUser(false);loadUsers();showToast('User registered');
-    } catch { showToast('Failed to register','⚠️'); }
+    try{
+      const ex=await db.get('users',`username=eq.${encodeURIComponent(uName.trim().toLowerCase())}&select=id`);
+      if(ex.length){setUErr('Username taken');setSaving(false);return}
+      const u={id:'u'+Date.now(),username:uName.trim().toLowerCase(),display_name:uDisp.trim(),password:hash(uPass),avatar:uAv};
+      await db.post('users',u);
+      setUName('');setUDisp('');setUPass('');setUAv('😊');setShowUsr(false);loadUsers();showT('User registered');
+    }catch{showT('Failed','⚠️')}
     setSaving(false);
   };
+  const delUsr=async(id)=>{if(id===currentUser.id)return;try{await db.del('users',id);loadUsers();showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
 
-  const deleteUser = async (id) => {
-    if(id===currentUser.id) return;
-    try { await sb.delete('users',id); loadUsers(); showToast('User deleted','🗑'); } catch { showToast('Failed','⚠️'); }
-  };
-
-  return (
+  return(
     <div className="page-scroll">
-      {toast && <Toast msg={toast.msg} icon={toast.icon}/>}
-      <div className="page-header"><div><div className="page-title">Master</div><div className="page-subtitle">Manage categories & budgets</div></div></div>
+      {toast&&<Toast msg={toast.msg} icon={toast.icon}/>}
+      <div className="page-header"><div><div className="page-title">Master</div><div className="page-subtitle">Manage categories &amp; budgets</div></div></div>
       <div style={{display:'flex',gap:8,padding:'0 20px',marginBottom:20}}>
         {['groups','budgets','users'].map(t=>(
-          <button key={t} onClick={()=>setTab(t)} className={`btn ${tab===t?'':'btn-ghost'}`} style={{flex:1,padding:10,fontSize:12}}>
+          <button key={t} onClick={()=>setTab(t)} className={`btn ${tab===t?'':'ghost'}`} style={{flex:1,padding:10,fontSize:12}}>
             {t==='groups'?'📂 Cat.':t==='budgets'?'💰 Budget':'👥 Users'}
           </button>
         ))}
@@ -709,247 +631,259 @@ function Master({ groups, setGroups, budgets, setBudgets, currentUser, onUsersCh
 
       {tab==='groups'&&(
         <div className="section">
-          <button className="btn" style={{marginBottom:16}} onClick={()=>setShowAddGroup(true)}>+ Add Category</button>
+          <button className="btn" style={{marginBottom:16}} onClick={()=>setShowGrp(true)}>+ Add Category</button>
           {groups.map(g=>(
             <div key={g.id} className="card" style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
               <div style={{width:44,height:44,borderRadius:12,background:`${g.color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{g.emoji}</div>
               <div style={{flex:1}}><div style={{fontWeight:500,fontSize:15}}>{g.name}</div><div style={{width:60,height:4,borderRadius:2,background:g.color,marginTop:6}}/></div>
-              <button onClick={()=>deleteGroup(g.id)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:18,padding:4}}>🗑</button>
+              <button onClick={()=>delGrp(g.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:18,padding:4}}>🗑</button>
             </div>
           ))}
-          {groups.length===0&&<div className="empty"><div className="empty-icon">📂</div><div className="empty-text">No categories yet</div></div>}
+          {groups.length===0&&<div className="empty"><div className="empty-icon">📂</div><div>No categories yet</div></div>}
         </div>
       )}
 
       {tab==='budgets'&&(
         <div className="section">
-          <button className="btn" style={{marginBottom:16}} onClick={()=>{setEditBudget(null);setBudgetAmount('');setBudgetGroupId(groups[0]?.id||'');setShowAddBudget(true);}}>+ Set Budget</button>
+          <button className="btn" style={{marginBottom:16}} onClick={()=>{setEditBud(null);setBAmt('');setBGid(groups[0]?.id||'');setShowBud(true)}}>+ Set Budget</button>
           {budgets.map(b=>{const g=groups.find(x=>x.id===b.group_id);return(
             <div key={b.id} className="card" style={{marginBottom:10}}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                 <div style={{display:'flex',alignItems:'center',gap:10}}>
                   <span style={{fontSize:20}}>{g?.emoji||'💰'}</span>
-                  <div><div style={{fontWeight:500,fontSize:14}}>{g?.name||'Unknown'}</div><div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>{b.type==='weekly'?'Weekly':'Monthly'} · {b.date_from} → {b.date_to}</div></div>
+                  <div><div style={{fontWeight:500,fontSize:14}}>{g?.name||'Unknown'}</div><div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{b.type==='weekly'?'Weekly':'Monthly'} · {b.date_from} → {b.date_to}</div></div>
                 </div>
                 <div style={{textAlign:'right'}}>
-                  <div style={{fontFamily:'var(--font-head)',fontSize:15,fontWeight:700,color:'var(--accent)'}}>{fmtIDR(b.amount)}</div>
+                  <div style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,color:'var(--a)'}}>{idr(b.amount)}</div>
                   <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:4}}>
-                    <button onClick={()=>openEditBudget(b)} style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:12}}>✏️</button>
-                    <button onClick={()=>deleteBudget(b.id)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:12}}>🗑</button>
+                    <button onClick={()=>openEditBud(b)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:12}}>✏️</button>
+                    <button onClick={()=>delBud(b.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:12}}>🗑</button>
                   </div>
                 </div>
               </div>
             </div>
           );})}
-          {budgets.length===0&&<div className="empty"><div className="empty-icon">💰</div><div className="empty-text">No budgets set</div></div>}
+          {budgets.length===0&&<div className="empty"><div className="empty-icon">💰</div><div>No budgets set</div></div>}
         </div>
       )}
 
       {tab==='users'&&(
         <div className="section">
-          <button className="btn" style={{marginBottom:16}} onClick={()=>{setUserError('');setShowAddUser(true);}}>+ Register New User</button>
+          <button className="btn" style={{marginBottom:16}} onClick={()=>{setUErr('');setShowUsr(true)}}>+ Register New User</button>
           {users.map(u=>(
             <div key={u.id} className="card" style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
-              <div style={{width:44,height:44,borderRadius:'50%',background:'var(--bg3)',border:'0.5px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{u.avatar}</div>
+              <div style={{width:44,height:44,borderRadius:'50%',background:'var(--bg3)',border:'.5px solid var(--b1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{u.avatar}</div>
               <div style={{flex:1}}>
                 <div style={{fontWeight:500,fontSize:15}}>{u.display_name}</div>
-                <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>@{u.username}</div>
-                {u.id===currentUser.id&&<div style={{fontSize:11,color:'var(--accent)',marginTop:3}}>● You</div>}
+                <div style={{fontSize:12,color:'var(--t2)',marginTop:2}}>@{u.username}</div>
+                {u.id===currentUser.id&&<div style={{fontSize:11,color:'var(--a)',marginTop:3}}>● You</div>}
               </div>
-              {u.id!==currentUser.id&&<button onClick={()=>deleteUser(u.id)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:18,padding:4}}>🗑</button>}
+              {u.id!==currentUser.id&&<button onClick={()=>delUsr(u.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:18,padding:4}}>🗑</button>}
             </div>
           ))}
         </div>
       )}
 
-      {showAddGroup&&(
-        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAddGroup(false)}>
+      {/* ── MODAL: Add Category ── */}
+      {showGrp&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowGrp(false)}>
           <div className="modal">
-            <div className="modal-scroll">
+            <div className="modal-body">
               <div className="modal-handle"/>
               <div className="modal-title">New Category</div>
-              <div className="form-group"><label className="form-label">Name</label><input className="form-input" placeholder="e.g. Groceries" value={newGroupName} onChange={e=>setNewGroupName(e.target.value)}/></div>
-              <div className="form-group"><label className="form-label">Emoji</label><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{GROUP_EMOJIS.map(em=><div key={em} onClick={()=>setNewGroupEmoji(em)} style={{width:40,height:40,borderRadius:10,background:newGroupEmoji===em?'var(--accent-bg)':'var(--bg3)',border:`0.5px solid ${newGroupEmoji===em?'var(--accent)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,cursor:'pointer'}}>{em}</div>)}</div></div>
-              <div className="form-group"><label className="form-label">Color</label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{GROUP_COLORS.map(c=><div key={c} onClick={()=>setNewGroupColor(c)} style={{width:32,height:32,borderRadius:'50%',background:c,border:`2px solid ${newGroupColor===c?'white':'transparent'}`,cursor:'pointer'}}/>)}</div></div>
+              <div className="fg"><label className="fl">Name</label><input className="fi" placeholder="e.g. Groceries" value={gName} onChange={e=>setGName(e.target.value)}/></div>
+              <div className="fg">
+                <label className="fl">Emoji</label>
+                <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                  {EMOJIS.map(em=><div key={em} onClick={()=>setGEmoji(em)} style={{width:40,height:40,borderRadius:10,background:gEmoji===em?'var(--abg)':'var(--bg3)',border:`.5px solid ${gEmoji===em?'var(--a)':'var(--b1)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,cursor:'pointer'}}>{em}</div>)}
+                </div>
+              </div>
+              <div className="fg">
+                <label className="fl">Color</label>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  {COLORS.map(c=><div key={c} onClick={()=>setGColor(c)} style={{width:32,height:32,borderRadius:'50%',background:c,border:`2px solid ${gColor===c?'white':'transparent'}`,cursor:'pointer'}}/>)}
+                </div>
+              </div>
             </div>
-            <div className="modal-footer">
-              <div className="btn-row"><button className="btn btn-ghost" onClick={()=>setShowAddGroup(false)}>Cancel</button><button className="btn" onClick={addGroup} disabled={saving}>{saving?'Saving...':'Add'}</button></div>
-            </div>
-          </div>
-        </div>
-      )})}
-
-      {showAddBudget&&(
-        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAddBudget(false)}>
-          <div className="modal">
-            <div className="modal-scroll">
-              <div className="modal-handle"/>
-              <div className="modal-title">{editBudget?'Edit Budget':'Set Budget'}</div>
-              <div className="form-group"><label className="form-label">Category</label><select className="form-input" value={budgetGroupId} onChange={e=>setBudgetGroupId(e.target.value)}>{groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}</select></div>
-              <div className="form-group"><label className="form-label">Budget Amount (IDR)</label><input className="form-input" type="number" inputMode="numeric" placeholder="e.g. 1500000" value={budgetAmount} onChange={e=>setBudgetAmount(e.target.value)}/></div>
-              <div className="form-group"><label className="form-label">Budget Type</label><div style={{display:'flex',gap:8}}>{['weekly','monthly'].map(type=><button key={type} onClick={()=>setBudgetType(type)} className={`btn ${budgetType===type?'':'btn-ghost'}`} style={{flex:1,padding:10,fontSize:13}}>{type==='weekly'?'📅 Weekly':'📆 Monthly'}</button>)}</div></div>
-              <div className="form-group"><label className="form-label">From</label><input className="form-input" type="date" value={budgetFrom} onChange={e=>setBudgetFrom(e.target.value)}/></div>
-              <div className="form-group"><label className="form-label">To</label><input className="form-input" type="date" value={budgetTo} onChange={e=>setBudgetTo(e.target.value)}/></div>
-            </div>
-            <div className="modal-footer">
-              <div className="btn-row"><button className="btn btn-ghost" onClick={()=>{setShowAddBudget(false);setEditBudget(null);}}>Cancel</button><button className="btn" onClick={saveBudget} disabled={saving}>{saving?'Saving...':'💾 Save'}</button></div>
-            </div>
-          </div>
-        </div>
-      )})}
-
-      {showAddUser&&(
-        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAddUser(false)}>
-          <div className="modal">
-            <div className="modal-scroll">
-              <div className="modal-handle"/>
-              <div className="modal-title">Register User</div>
-              {userError&&<div style={{background:'var(--red-bg)',border:'0.5px solid rgba(255,77,77,.2)',borderRadius:10,padding:'10px 14px',fontSize:13,color:'var(--red)',marginBottom:16}}>⚠️ {userError}</div>}
-              <div className="form-group"><label className="form-label">Display Name</label><input className="form-input" placeholder="e.g. Thaariq" value={newDisplayName} onChange={e=>setNewDisplayName(e.target.value)}/></div>
-              <div className="form-group"><label className="form-label">Username</label><input className="form-input" placeholder="e.g. thaariq" value={newUsername} onChange={e=>setNewUsername(e.target.value.toLowerCase().replace(/\s/g,''))}/></div>
-              <div className="form-group"><label className="form-label">Password</label><input className="form-input" type="password" placeholder="Min. 4 characters" value={newPassword} onChange={e=>setNewPassword(e.target.value)}/></div>
-              <div className="form-group"><label className="form-label">Avatar</label><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{AVATAR_OPTIONS.map(av=><div key={av} onClick={()=>setNewAvatar(av)} style={{width:42,height:42,borderRadius:10,background:newAvatar===av?'var(--accent-bg)':'var(--bg3)',border:`0.5px solid ${newAvatar===av?'var(--accent)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,cursor:'pointer'}}>{av}</div>)}</div></div>
-            </div>
-            <div className="modal-footer">
-              <div className="btn-row"><button className="btn btn-ghost" onClick={()=>setShowAddUser(false)}>Cancel</button><button className="btn" onClick={addUser} disabled={saving}>{saving?'Registering...':'Register'}</button></div>
+            <div className="modal-foot">
+              <div className="btn-row">
+                <button className="btn ghost" onClick={()=>setShowGrp(false)}>Cancel</button>
+                <button className="btn" onClick={addGrp} disabled={saving}>{saving?'Saving...':'Add'}</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── MODAL: Set Budget ── */}
+      {showBud&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowBud(false)}>
+          <div className="modal">
+            <div className="modal-body">
+              <div className="modal-handle"/>
+              <div className="modal-title">{editBud?'Edit Budget':'Set Budget'}</div>
+              <div className="fg"><label className="fl">Category</label>
+                <select className="fi" value={bGid} onChange={e=>setBGid(e.target.value)}>
+                  {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
+                </select>
+              </div>
+              <div className="fg"><label className="fl">Amount (IDR)</label><input className="fi" type="number" inputMode="numeric" placeholder="e.g. 1500000" value={bAmt} onChange={e=>setBAmt(e.target.value)}/></div>
+              <div className="fg">
+                <label className="fl">Type</label>
+                <div style={{display:'flex',gap:8}}>
+                  {['weekly','monthly'].map(tp=><button key={tp} onClick={()=>setBType(tp)} className={`btn ${bType===tp?'':'ghost'}`} style={{flex:1,padding:10,fontSize:13}}>{tp==='weekly'?'📅 Weekly':'📆 Monthly'}</button>)}
+                </div>
+              </div>
+              <div className="fg"><label className="fl">From</label><input className="fi" type="date" value={bFrom} onChange={e=>setBFrom(e.target.value)}/></div>
+              <div className="fg"><label className="fl">To</label><input className="fi" type="date" value={bTo} onChange={e=>setBTo(e.target.value)}/></div>
+            </div>
+            <div className="modal-foot">
+              <div className="btn-row">
+                <button className="btn ghost" onClick={()=>{setShowBud(false);setEditBud(null)}}>Cancel</button>
+                <button className="btn" onClick={saveBud} disabled={saving}>{saving?'Saving...':'💾 Save'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Register User ── */}
+      {showUsr&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowUsr(false)}>
+          <div className="modal">
+            <div className="modal-body">
+              <div className="modal-handle"/>
+              <div className="modal-title">Register User</div>
+              {uErr&&<div style={{background:'var(--redbg)',border:'.5px solid rgba(255,77,77,.2)',borderRadius:10,padding:'10px 14px',fontSize:13,color:'var(--red)',marginBottom:16}}>⚠️ {uErr}</div>}
+              <div className="fg"><label className="fl">Display Name</label><input className="fi" placeholder="e.g. Thaariq" value={uDisp} onChange={e=>setUDisp(e.target.value)}/></div>
+              <div className="fg"><label className="fl">Username</label><input className="fi" placeholder="e.g. thaariq" value={uName} onChange={e=>setUName(e.target.value.toLowerCase().replace(/\s/g,''))}/></div>
+              <div className="fg"><label className="fl">Password</label><input className="fi" type="password" placeholder="Min. 4 chars" value={uPass} onChange={e=>setUPass(e.target.value)}/></div>
+              <div className="fg">
+                <label className="fl">Avatar</label>
+                <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                  {AVATARS.map(av=><div key={av} onClick={()=>setUAv(av)} style={{width:42,height:42,borderRadius:10,background:uAv===av?'var(--abg)':'var(--bg3)',border:`.5px solid ${uAv===av?'var(--a)':'var(--b1)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,cursor:'pointer'}}>{av}</div>)}
+                </div>
+              </div>
+            </div>
+            <div className="modal-foot">
+              <div className="btn-row">
+                <button className="btn ghost" onClick={()=>setShowUsr(false)}>Cancel</button>
+                <button className="btn" onClick={addUsr} disabled={saving}>{saving?'Registering...':'Register'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  );
-}div>
   );
 }
 
-// ── MAIN APP ─────────────────────────────────────────────────────────
-function App() {
-  const [currentUser, setCurrentUser] = useState(()=>getSession());
-  const [tab, setTab] = useState('dashboard');
-  const [showAdd, setShowAdd] = useState(false);
-  const [transactions, setTransactions] = useState([]);
-  const [groups, setGroups] = useState([]);
-  const [budgets, setBudgets] = useState([]);
-  const [syncing, setSyncing] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [initialLoading, setInitialLoading] = useState(true);
-
-  const showToast = (msg, icon='✓') => { setToast({msg,icon}); setTimeout(()=>setToast(null),2500); };
-
-  const loadData = useCallback(async (uid) => {
-    if (!uid) return;
-    setSyncing(true);
-    try {
-      const [tx, gr, bu] = await Promise.all([
-        sb.get('transactions', `user_id=eq.${uid}&order=date.desc,created_at.desc&select=*`),
-        sb.get('groups', `user_id=eq.${uid}&order=created_at.asc&select=*`),
-        sb.get('budgets', `user_id=eq.${uid}&order=created_at.asc&select=*`),
-      ]);
-      setTransactions(tx);
-      setGroups(gr);
-      setBudgets(bu);
-    } catch(e) { showToast('Sync failed — offline mode','⚠️'); }
-    setSyncing(false);
-    setInitialLoading(false);
-  }, []);
-
-  useEffect(()=>{ if(currentUser) loadData(currentUser.id); else setInitialLoading(false); },[currentUser]);
-
-  const handleLogin = (user) => { setCurrentUser(user); setTab('dashboard'); };
-  const handleLogout = () => { clearSession(); setCurrentUser(null); setTransactions([]); setGroups([]); setBudgets([]); };
-
-  const addTx = async (tx) => {
-    try {
-      await sb.post('transactions', tx);
-      setTransactions(ts=>[tx,...ts]);
-      showToast('Transaction saved ☁️');
-    } catch { showToast('Failed to save','⚠️'); }
-  };
-
-  const deleteTx = async (id) => {
-    try {
-      await sb.delete('transactions', id);
-      setTransactions(ts=>ts.filter(t=>t.id!==id));
-      showToast('Deleted','🗑');
-    } catch { showToast('Failed to delete','⚠️'); }
-  };
-
-  if (!currentUser) return (
-    <div style={{display:'flex',flexDirection:'column',height:'100vh',background:'var(--bg)'}}>
-      <LoginPage onLogin={handleLogin}/>
-    </div>
-  );
-
-  if (initialLoading) return (
-    <div style={{display:'flex',flexDirection:'column',height:'100vh',alignItems:'center',justifyContent:'center',background:'var(--bg)',gap:16}}>
-      <div style={{fontSize:48}}>💸</div>
-      <div style={{fontFamily:'var(--font-head)',fontSize:24,fontWeight:800,color:'var(--text)'}}>Trackr</div>
-      <div style={{fontSize:13,color:'var(--text2)',display:'flex',alignItems:'center',gap:6}}>
-        <span className="sync-dot syncing"/>Loading your data...
-      </div>
-    </div>
-  );
-
-  const PageContent = () => (
-    <>
-      {tab==='dashboard'&&<Dashboard transactions={transactions} groups={groups} budgets={budgets} onRefresh={()=>loadData(currentUser.id)} syncing={syncing}/>}
-      {tab==='transactions'&&<Transactions transactions={transactions} groups={groups} onDelete={deleteTx}/>}
-      {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} currentUser={currentUser}/>}
-      {tab==='profile'&&(
-        <div className="page-scroll">
-          <div className="page-header"><div className="page-title">Profile</div></div>
-          <div style={{padding:'0 20px'}}>
-            <div className="card" style={{display:'flex',alignItems:'center',gap:16,marginBottom:20}}>
-              <div style={{width:56,height:56,borderRadius:'50%',background:'var(--accent-bg)',border:'1.5px solid var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0}}>{currentUser.avatar||'👤'}</div>
-              <div>
-                <div style={{fontFamily:'var(--font-head)',fontSize:18,fontWeight:700}}>{currentUser.displayName}</div>
-                <div style={{fontSize:13,color:'var(--text2)',marginTop:2}}>@{currentUser.username}</div>
-                <div style={{fontSize:11,color:'var(--accent)',marginTop:4,display:'flex',alignItems:'center',gap:4}}><span className="sync-dot online"/>Cloud synced</div>
-              </div>
-            </div>
-            <div className="stats-grid" style={{marginBottom:20}}>
-              <div className="stat-card"><div className="stat-label">My Transactions</div><div className="stat-value accent">{transactions.length}</div></div>
-              <div className="stat-card"><div className="stat-label">Total Spent</div><div className="stat-value" style={{fontSize:15}}>Rp {Math.round(transactions.reduce((s,t)=>s+t.amount,0)/1000)}K</div></div>
-            </div>
-            <button className="btn" style={{marginBottom:10}} onClick={()=>loadData(currentUser.id)}>🔄 Refresh Data</button>
-            <button className="btn btn-danger" onClick={handleLogout}>🚪 Sign Out</button>
+// ── PROFILE ───────────────────────────────────────────────────────────
+function Profile({currentUser,txs,onRefresh,onLogout}){
+  return(
+    <div className="page-scroll">
+      <div className="page-header"><div className="page-title">Profile</div></div>
+      <div style={{padding:'0 20px'}}>
+        <div className="card" style={{display:'flex',alignItems:'center',gap:16,marginBottom:20}}>
+          <div style={{width:56,height:56,borderRadius:'50%',background:'var(--abg)',border:'1.5px solid var(--a)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0}}>{currentUser.avatar||'👤'}</div>
+          <div>
+            <div style={{fontFamily:'var(--fh)',fontSize:18,fontWeight:700}}>{currentUser.displayName}</div>
+            <div style={{fontSize:13,color:'var(--t2)',marginTop:2}}>@{currentUser.username}</div>
+            <div style={{fontSize:11,color:'var(--a)',marginTop:4,display:'flex',alignItems:'center',gap:4}}><span className="sync-dot on"/>Cloud synced</div>
           </div>
         </div>
-      )}
-    </>
-  );
-
-  return (
-    <>
-      {toast && <Toast msg={toast.msg} icon={toast.icon}/>}
-      {/* Desktop sidebar nav */}
-      <nav className="bottom-nav">
-        <div className="nav-brand">
-          <span className="nav-brand-icon">💸</span>
-          <span className="nav-brand-name">Trackr</span>
+        <div className="stats-grid" style={{marginBottom:20}}>
+          <div className="stat-card"><div className="stat-label">My Transactions</div><div className="stat-value ac">{txs.length}</div></div>
+          <div className="stat-card"><div className="stat-label">Total Spent</div><div className="stat-value" style={{fontSize:15}}>Rp {Math.round(txs.reduce((s,t)=>s+t.amount,0)/1000)}K</div></div>
         </div>
-        <div className="nav-divider"/>
-        <div className="nav-fab" onClick={()=>setShowAdd(true)}>
-          <Icon name="plus"/>
-          <span className="nav-fab-label">Add Transaction</span>
-        </div>
-        <div className="nav-divider"/>
-        <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={()=>setTab('dashboard')}><Icon name="home"/><span>Overview</span></div>
-        <div className={`nav-item ${tab==='transactions'?'active':''}`} onClick={()=>setTab('transactions')}><Icon name="receipt"/><span>History</span></div>
-        <div className={`nav-item ${tab==='master'?'active':''}`} onClick={()=>setTab('master')}><Icon name="tag"/><span>Master</span></div>
-        <div className={`nav-item ${tab==='profile'?'active':''}`} onClick={()=>setTab('profile')}><Icon name="user"/><span style={{color:tab==='profile'?'var(--accent)':'var(--text3)',fontWeight:tab==='profile'?500:400}}>{currentUser.displayName.split(' ')[0]}</span></div>
-        <div className="nav-divider" style={{marginTop:'auto'}}/>
-        <div className="nav-item" onClick={handleLogout}>
-          <svg viewBox="0 0 24 24" width={20} height={20} fill="none" strokeWidth={1.6} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          <span>Sign Out</span>
-        </div>
-      </nav>
-      {/* Page content */}
-      <div className="desktop-main">
-        <PageContent/>
+        <button className="btn" style={{marginBottom:10}} onClick={onRefresh}>🔄 Refresh Data</button>
+        <button className="btn danger" onClick={onLogout}>🚪 Sign Out</button>
       </div>
-      {showAdd&&<AddTxModal groups={groups} userId={currentUser.id} onSave={addTx} onClose={()=>setShowAdd(false)}/>}
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────
+function App(){
+  const [user,setUser]=useState(()=>getSession());
+  const [tab,setTab]=useState('dash');
+  const [showAdd,setShowAdd]=useState(false);
+  const [txs,setTxs]=useState([]);
+  const [groups,setGroups]=useState([]);
+  const [budgets,setBudgets]=useState([]);
+  const [syncing,setSyncing]=useState(false);
+  const [loading,setLoading]=useState(true);
+  const [toast,setToast]=useState(null);
+  const showT=(msg,icon='✓')=>{setToast({msg,icon});setTimeout(()=>setToast(null),2500)};
+
+  const load=useCallback(async(uid)=>{
+    if(!uid)return;
+    setSyncing(true);
+    try{
+      const [t,g,b]=await Promise.all([
+        db.get('transactions',`user_id=eq.${uid}&order=date.desc,created_at.desc&select=*`),
+        db.get('groups',`user_id=eq.${uid}&order=created_at.asc&select=*`),
+        db.get('budgets',`user_id=eq.${uid}&order=created_at.asc&select=*`),
+      ]);
+      setTxs(t);setGroups(g);setBudgets(b);
+    }catch{showT('Sync failed','⚠️')}
+    setSyncing(false);setLoading(false);
+  },[]);
+
+  useEffect(()=>{if(user)load(user.id);else setLoading(false)},[user]);
+
+  const login=u=>{setUser(u);setTab('dash')};
+  const logout=()=>{clearSession();setUser(null);setTxs([]);setGroups([]);setBudgets([])};
+  const addTx=async tx=>{try{await db.post('transactions',tx);setTxs(a=>[tx,...a]);showT('Saved ☁️')}catch{showT('Failed','⚠️')}};
+  const delTx=async id=>{try{await db.del('transactions',id);setTxs(a=>a.filter(t=>t.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
+
+  if(!user)return <div style={{flex:1,display:'flex',flexDirection:'column',height:'100vh',background:'var(--bg)'}}><Login onLogin={login}/></div>;
+  if(loading)return <div style={{flex:1,display:'flex',flexDirection:'column',height:'100vh',alignItems:'center',justifyContent:'center',background:'var(--bg)',gap:16}}><div style={{fontSize:48}}>💸</div><div style={{fontFamily:'var(--fh)',fontSize:24,fontWeight:800}}>Trackr</div><div style={{fontSize:13,color:'var(--t2)',display:'flex',alignItems:'center',gap:6}}><span className="sync-dot spin"/>Loading...</div></div>;
+
+  const NAV=[
+    {id:'dash',icon:'home',label:'Overview'},
+    {id:'hist',icon:'hist',label:'History'},
+    {id:'master',icon:'tag',label:'Master'},
+    {id:'profile',icon:'user',label:user.displayName.split(' ')[0]},
+  ];
+
+  return(
+    <>
+      {toast&&<Toast msg={toast.msg} icon={toast.icon}/>}
+
+      {/* Desktop sidebar */}
+      <div className="sidebar">
+        <div className="sb-brand"><span>💸</span>Trackr</div>
+        <button className="sb-fab" onClick={()=>setShowAdd(true)}><Ic n="plus" s={18}/> Add Transaction</button>
+        <div className="sb-divider"/>
+        {NAV.map(n=>(
+          <div key={n.id} className={`sb-item ${tab===n.id?'active':''}`} onClick={()=>setTab(n.id)}>
+            <Ic n={n.icon} s={18}/>{n.label}
+          </div>
+        ))}
+        <div className="sb-spacer"/>
+        <div className="sb-divider"/>
+        <div className="sb-item" onClick={logout}><Ic n="out" s={18}/>Sign Out</div>
+      </div>
+
+      {/* Main content */}
+      <div className="main-wrap">
+        {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} onRefresh={()=>load(user.id)} syncing={syncing}/>}
+        {tab==='hist'&&<History txs={txs} groups={groups} onDelete={delTx}/>}
+        {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} currentUser={user}/>}
+        {tab==='profile'&&<Profile currentUser={user} txs={txs} onRefresh={()=>load(user.id)} onLogout={logout}/>}
+      </div>
+
+      {/* Mobile bottom nav */}
+      <nav className="bottom-nav">
+        <div className={`nav-item ${tab==='dash'?'active':''}`} onClick={()=>setTab('dash')}><Ic n="home"/><span>Overview</span></div>
+        <div className={`nav-item ${tab==='hist'?'active':''}`} onClick={()=>setTab('hist')}><Ic n="hist"/><span>History</span></div>
+        <div className="nav-fab" onClick={()=>setShowAdd(true)}><Ic n="plus"/></div>
+        <div className={`nav-item ${tab==='master'?'active':''}`} onClick={()=>setTab('master')}><Ic n="tag"/><span>Master</span></div>
+        <div className={`nav-item ${tab==='profile'?'active':''}`} onClick={()=>setTab('profile')}><Ic n="user"/><span style={{color:tab==='profile'?'var(--a)':'var(--t3)'}}>{user.displayName.split(' ')[0]}</span></div>
+      </nav>
+
+      {showAdd&&<AddTx groups={groups} userId={user.id} onSave={addTx} onClose={()=>setShowAdd(false)}/>}
     </>
   );
 }
