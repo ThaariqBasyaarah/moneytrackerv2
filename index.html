@@ -297,7 +297,7 @@ function Login({onLogin}){
 }
 
 // ── ADD TX MODAL ──────────────────────────────────────────────────────
-function AddTx({groups,userId,onSave,onClose}){
+function AddTx({groups,userId,createdBy,onSave,onClose}){
   const [desc,setDesc]=useState('');
   const [amt,setAmt]=useState('');
   const [gid,setGid]=useState(groups[0]?.id||'');
@@ -347,7 +347,7 @@ function AddTx({groups,userId,onSave,onClose}){
   const save=async()=>{
     if(!desc.trim()||!amt||!gid)return;
     setSaving(true);
-    const tx={id:'t'+Date.now(),user_id:userId,description:desc.trim(),amount:parseInt(amt.replace(/\D/g,'')),group_id:gid,date,photo:photo||null};
+    const tx={id:'t'+Date.now(),user_id:userId,created_by:createdBy,description:desc.trim(),amount:parseInt(amt.replace(/\D/g,'')),group_id:gid,date,photo:photo||null};
     await onSave(tx);setSaving(false);onClose();
   };
 
@@ -528,7 +528,7 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing}){
             recent.map(t=>{const g=groups.find(x=>x.id===t.group_id);return(
               <div key={t.id} className="tx-item">
                 <div className="tx-icon" style={{background:`${g?.color||'#888'}20`}}>{g?.emoji||'💰'}</div>
-                <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} · {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</div></div>
+                <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} · {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}{t.created_by?' · '+t.created_by:''}</div></div>
                 {t.photo&&<img src={t.photo} alt="" className="tx-thumb"/>}
                 <div><div className="tx-amt">-{idr(t.amount)}</div><div className="tx-date">{t.date===tod()?'Today':t.date}</div></div>
               </div>
@@ -569,7 +569,7 @@ function History({txs,groups,onDelete}){
             {list.map(t=>{const g=groups.find(x=>x.id===t.group_id);return(
               <div key={t.id} className="tx-item">
                 <div className="tx-icon" style={{background:`${g?.color||'#888'}20`}}>{g?.emoji||'💰'}</div>
-                <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} · {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div></div>
+                <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} · {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}{t.created_by?' · by '+t.created_by:''}</div></div>
                 {t.photo&&<img src={t.photo} alt="" className="tx-thumb"/>}
                 <div style={{textAlign:'right'}}>
                   <div className="tx-amt">-{idr(t.amount)}</div>
@@ -888,9 +888,9 @@ function App(){
     setSyncing(true);
     try{
       const [t,g,b]=await Promise.all([
-        db.get('transactions',`user_id=eq.${uid}&order=date.desc,created_at.desc&select=*`),
-        db.get('groups',`user_id=eq.${uid}&order=created_at.asc&select=*`),
-        db.get('budgets',`user_id=eq.${uid}&order=created_at.asc&select=*`),
+        db.get('transactions','order=date.desc,created_at.desc&select=*'),
+        db.get('groups','order=created_at.asc&select=*'),
+        db.get('budgets','order=created_at.asc&select=*'),
       ]);
       setTxs(t);setGroups(g);setBudgets(b);
     }catch{showT('Sync failed','⚠️')}
@@ -950,7 +950,7 @@ function App(){
         <div className={`nav-item ${tab==='profile'?'active':''}`} onClick={()=>setTab('profile')}><Ic n="user"/><span style={{color:tab==='profile'?'var(--a)':'var(--t3)'}}>{user.displayName.split(' ')[0]}</span></div>
       </nav>
 
-      {showAdd&&<AddTx groups={groups} userId={user.id} onSave={addTx} onClose={()=>setShowAdd(false)}/>}
+      {showAdd&&<AddTx groups={groups} userId={user.id} createdBy={user.displayName} onSave={addTx} onClose={()=>setShowAdd(false)}/>}
     </>
   );
 }
