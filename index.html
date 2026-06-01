@@ -169,11 +169,11 @@
     .prog-fill{height:100%;border-radius:3px;transition:width .5s}
 
     /* WEEK CHART */
-    .wchart{display:flex;align-items:flex-end;gap:6px;height:80px;padding:0 4px}
-    .wbar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-    .wbar-track{width:100%;flex:1;background:var(--bg3);border-radius:4px;display:flex;align-items:flex-end;overflow:hidden}
-    .wbar-fill{width:100%;border-radius:4px;transition:height .5s}
-    .wday{font-size:10px;color:var(--t3)}
+    .wchart{display:flex;align-items:flex-end;gap:6px;height:90px;padding:0 4px}
+    .wbar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%}
+    .wbar-track{width:100%;flex:1;background:var(--bg3);border-radius:6px;position:relative;overflow:hidden;min-height:10px}
+    .wbar-fill{position:absolute;bottom:0;left:0;right:0;border-radius:6px;transition:height .6s ease}
+    .wday{font-size:10px;color:var(--t3);flex-shrink:0}
     .wday.today{color:var(--a);font-weight:600}
 
     /* MISC */
@@ -307,6 +307,12 @@ function AddTx({groups,userId,onSave,onClose}){
   const [ai,setAi]=useState(false);
   const [saving,setSaving]=useState(false);
   const vidRef=useRef(null);
+
+  const fmtAmt = (val) => {
+    const num = val.replace(/\D/g,'');
+    return num ? parseInt(num).toLocaleString('id-ID') : '';
+  };
+  const parseAmt = (val) => val.replace(/\./g,'').replace(/,/g,'').replace(/\D/g,'');
   const streamRef=useRef(null);
   const fileRef=useRef(null);
 
@@ -381,7 +387,9 @@ function AddTx({groups,userId,onSave,onClose}){
           )}
           {ai&&<div style={{background:'var(--bluebg)',border:'.5px solid rgba(77,159,255,.2)',borderRadius:8,padding:'8px 12px',fontSize:12,color:'var(--blue)',marginBottom:14}}>🤖 Analyzing receipt...</div>}
           <div className="fg"><label className="fl">Description</label><input className="fi" placeholder="e.g. Lunch at warung" value={desc} onChange={e=>setDesc(e.target.value)}/></div>
-          <div className="fg"><label className="fl">Amount (IDR)</label><input className="fi" type="number" inputMode="numeric" placeholder="0" value={amt} onChange={e=>setAmt(e.target.value)}/></div>
+          <div className="fg"><label className="fl">Amount (IDR)</label>
+            <input className="fi" inputMode="numeric" placeholder="0" value={amt?parseInt(parseAmt(amt)||0).toLocaleString('id-ID'):''} onChange={e=>setAmt(parseAmt(e.target.value))}/>
+          </div>
           <div className="fg"><label className="fl">Category</label>
             <select className="fi" value={gid} onChange={e=>setGid(e.target.value)}>
               {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
@@ -491,7 +499,17 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing}){
                     <div className="prog-name">{g.emoji} {g.name}</div>
                     <div className="prog-right"><div className="prog-spent">{idr(spent)}</div><div className="prog-bud">{budget?`of ${idr(budget)}`:'no budget'}</div></div>
                   </div>
-                  {budget>0&&<div className="prog-track"><div className="prog-fill" style={{width:`${pct}%`,background:st==='o'?'#ff4d4d':st==='w'?'#ffb347':g.color}}/></div>}
+                  {budget>0&&(
+                    <>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                        <div className="prog-track" style={{flex:1,marginRight:8}}>
+                          <div className="prog-fill" style={{width:`${pct}%`,background:st==='o'?'#ff4d4d':st==='w'?'#ffb347':g.color}}/>
+                        </div>
+                        <span style={{fontSize:11,fontWeight:600,color:st==='o'?'#ff4d4d':st==='w'?'#ffb347':'var(--a)',flexShrink:0}}>{pct.toFixed(0)}%</span>
+                      </div>
+                      {st==='o'&&<div style={{fontSize:11,color:'#ff4d4d',marginTop:2}}>⚠️ Over budget!</div>}
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -571,6 +589,7 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
   const [users,setUsers]=useState([]);
   // group form
   const [showGrp,setShowGrp]=useState(false);
+  const [editGrp,setEditGrp]=useState(null);
   const [gName,setGName]=useState('');
   const [gEmoji,setGEmoji]=useState('🏠');
   const [gColor,setGColor]=useState(COLORS[0]);
@@ -584,6 +603,7 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
   const [bTo,setBTo]=useState(()=>{const d=new Date(new Date().getFullYear(),new Date().getMonth()+1,0);return d.toISOString().split('T')[0]});
   // user form
   const [showUsr,setShowUsr]=useState(false);
+  const [editUsr,setEditUsr]=useState(null);
   const [uName,setUName]=useState('');
   const [uDisp,setUDisp]=useState('');
   const [uPass,setUPass]=useState('');
@@ -596,10 +616,20 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
   useEffect(()=>{if(tab==='users')loadUsers()},[tab]);
   const loadUsers=async()=>{try{const u=await db.get('users','select=id,username,display_name,avatar&order=created_at.asc');setUsers(u)}catch{}};
 
+  const openAddGrp=()=>{setEditGrp(null);setGName('');setGEmoji('🏠');setGColor(COLORS[0]);setShowGrp(true)};
+  const openEditGrpFn=(g)=>{setEditGrp(g);setGName(g.name);setGEmoji(g.emoji);setGColor(g.color);setShowGrp(true)};
   const addGrp=async()=>{
     if(!gName.trim())return;setSaving(true);
-    try{const g={id:'g'+Date.now(),user_id:currentUser.id,name:gName.trim(),emoji:gEmoji,color:gColor};await db.post('groups',g);setGroups(gs=>[...gs,g]);setGName('');setShowGrp(false);showT('Category added')}
-    catch{showT('Failed','⚠️')}
+    try{
+      if(editGrp){
+        const upd={...editGrp,name:gName.trim(),emoji:gEmoji,color:gColor};
+        await db.patch('groups',editGrp.id,upd);setGroups(gs=>gs.map(x=>x.id===editGrp.id?upd:x));showT('Category updated');
+      } else {
+        const g={id:'g'+Date.now(),user_id:currentUser.id,name:gName.trim(),emoji:gEmoji,color:gColor};
+        await db.post('groups',g);setGroups(gs=>[...gs,g]);showT('Category added');
+      }
+      setGName('');setShowGrp(false);setEditGrp(null);
+    }catch{showT('Failed','⚠️')}
     setSaving(false);
   };
   const delGrp=async(id)=>{try{await db.del('groups',id);setGroups(gs=>gs.filter(x=>x.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
@@ -617,19 +647,34 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
   const delBud=async(id)=>{try{await db.del('budgets',id);setBudgets(bs=>bs.filter(b=>b.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
   const openEditBud=(b)=>{setEditBud(b);setBGid(b.group_id);setBAmt(String(b.amount));setBType(b.type);setBFrom(b.date_from||'');setBTo(b.date_to||'');setShowBud(true)};
 
+  const openAddUsr=()=>{setEditUsr(null);setUName('');setUDisp('');setUPass('');setUAv('😊');setUErr('');setShowUsr(true)};
+  const openEditUsrFn=(u)=>{setEditUsr(u);setUName(u.username);setUDisp(u.display_name);setUPass('');setUAv(u.avatar);setUErr('');setShowUsr(true)};
   const addUsr=async()=>{
     setUErr('');
-    if(!uName.trim()||!uPass||!uDisp.trim()){setUErr('All fields required');return}
-    if(uPass.length<4){setUErr('Password min. 4 chars');return}
-    setSaving(true);
-    try{
-      const ex=await db.get('users',`username=eq.${encodeURIComponent(uName.trim().toLowerCase())}&select=id`);
-      if(ex.length){setUErr('Username taken');setSaving(false);return}
-      const u={id:'u'+Date.now(),username:uName.trim().toLowerCase(),display_name:uDisp.trim(),password:hash(uPass),avatar:uAv};
-      await db.post('users',u);
-      setUName('');setUDisp('');setUPass('');setUAv('😊');setShowUsr(false);loadUsers();showT('User registered');
-    }catch{showT('Failed','⚠️')}
-    setSaving(false);
+    if(editUsr){
+      // edit mode - password optional
+      if(!uDisp.trim()){setUErr('Display name required');return}
+      setSaving(true);
+      try{
+        const upd={display_name:uDisp.trim(),avatar:uAv};
+        if(uPass.length>=4) upd.password=hash(uPass);
+        await db.patch('users',editUsr.id,upd);
+        loadUsers();setShowUsr(false);setEditUsr(null);showT('User updated');
+      }catch{showT('Failed','⚠️')}
+      setSaving(false);
+    } else {
+      if(!uName.trim()||!uPass||!uDisp.trim()){setUErr('All fields required');return}
+      if(uPass.length<4){setUErr('Password min. 4 chars');return}
+      setSaving(true);
+      try{
+        const ex=await db.get('users',`username=eq.${encodeURIComponent(uName.trim().toLowerCase())}&select=id`);
+        if(ex.length){setUErr('Username taken');setSaving(false);return}
+        const u={id:'u'+Date.now(),username:uName.trim().toLowerCase(),display_name:uDisp.trim(),password:hash(uPass),avatar:uAv};
+        await db.post('users',u);
+        setUName('');setUDisp('');setUPass('');setUAv('😊');setShowUsr(false);loadUsers();showT('User registered');
+      }catch{showT('Failed','⚠️')}
+      setSaving(false);
+    }
   };
   const delUsr=async(id)=>{if(id===currentUser.id)return;try{await db.del('users',id);loadUsers();showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
 
@@ -647,12 +692,15 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
 
       {tab==='groups'&&(
         <div className="section">
-          <button className="btn" style={{marginBottom:16}} onClick={()=>setShowGrp(true)}>+ Add Category</button>
+          <button className="btn" style={{marginBottom:16}} onClick={openAddGrp}>+ Add Category</button>
           {groups.map(g=>(
             <div key={g.id} className="card" style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
               <div style={{width:44,height:44,borderRadius:12,background:`${g.color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{g.emoji}</div>
               <div style={{flex:1}}><div style={{fontWeight:500,fontSize:15}}>{g.name}</div><div style={{width:60,height:4,borderRadius:2,background:g.color,marginTop:6}}/></div>
-              <button onClick={()=>delGrp(g.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:18,padding:4}}>🗑</button>
+              <div style={{display:'flex',gap:4}}>
+                <button onClick={()=>openEditGrpFn(g)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:16,padding:4}}>✏️</button>
+                <button onClick={()=>delGrp(g.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:16,padding:4}}>🗑</button>
+              </div>
             </div>
           ))}
           {groups.length===0&&<div className="empty"><div className="empty-icon">📂</div><div>No categories yet</div></div>}
@@ -685,7 +733,7 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
 
       {tab==='users'&&(
         <div className="section">
-          <button className="btn" style={{marginBottom:16}} onClick={()=>{setUErr('');setShowUsr(true)}}>+ Register New User</button>
+          <button className="btn" style={{marginBottom:16}} onClick={openAddUsr}>+ Register New User</button>
           {users.map(u=>(
             <div key={u.id} className="card" style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
               <div style={{width:44,height:44,borderRadius:'50%',background:'var(--bg3)',border:'.5px solid var(--b1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{u.avatar}</div>
@@ -694,7 +742,10 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
                 <div style={{fontSize:12,color:'var(--t2)',marginTop:2}}>@{u.username}</div>
                 {u.id===currentUser.id&&<div style={{fontSize:11,color:'var(--a)',marginTop:3}}>● You</div>}
               </div>
-              {u.id!==currentUser.id&&<button onClick={()=>delUsr(u.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:18,padding:4}}>🗑</button>}
+              <div style={{display:'flex',gap:4}}>
+                <button onClick={()=>openEditUsrFn(u)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:16,padding:4}}>✏️</button>
+                {u.id!==currentUser.id&&<button onClick={()=>delUsr(u.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:16,padding:4}}>🗑</button>}
+              </div>
             </div>
           ))}
         </div>
@@ -706,7 +757,7 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
           <div className="modal">
             <div className="modal-body">
               <div className="modal-handle"/>
-              <div className="modal-title">New Category</div>
+              <div className="modal-title">{editGrp?'Edit Category':'New Category'}</div>
               <div className="fg"><label className="fl">Name</label><input className="fi" placeholder="e.g. Groceries" value={gName} onChange={e=>setGName(e.target.value)}/></div>
               <div className="fg">
                 <label className="fl">Emoji</label>
@@ -724,7 +775,7 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
             <div className="modal-foot">
               <div className="btn-row">
                 <button className="btn ghost" onClick={()=>setShowGrp(false)}>Cancel</button>
-                <button className="btn" onClick={addGrp} disabled={saving}>{saving?'Saving...':'Add'}</button>
+                <button className="btn" onClick={addGrp} disabled={saving}>{saving?'Saving...':editGrp?'Update':'Add'}</button>
               </div>
             </div>
           </div>
@@ -769,11 +820,11 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
           <div className="modal">
             <div className="modal-body">
               <div className="modal-handle"/>
-              <div className="modal-title">Register User</div>
+              <div className="modal-title">{editUsr?'Edit User':'Register User'}</div>
               {uErr&&<div style={{background:'var(--redbg)',border:'.5px solid rgba(255,77,77,.2)',borderRadius:10,padding:'10px 14px',fontSize:13,color:'var(--red)',marginBottom:16}}>⚠️ {uErr}</div>}
               <div className="fg"><label className="fl">Display Name</label><input className="fi" placeholder="e.g. Thaariq" value={uDisp} onChange={e=>setUDisp(e.target.value)}/></div>
-              <div className="fg"><label className="fl">Username</label><input className="fi" placeholder="e.g. thaariq" value={uName} onChange={e=>setUName(e.target.value.toLowerCase().replace(/\s/g,''))}/></div>
-              <div className="fg"><label className="fl">Password</label><input className="fi" type="password" placeholder="Min. 4 chars" value={uPass} onChange={e=>setUPass(e.target.value)}/></div>
+              {!editUsr&&<div className="fg"><label className="fl">Username</label><input className="fi" placeholder="e.g. thaariq" value={uName} onChange={e=>setUName(e.target.value.toLowerCase().replace(/\s/g,''))}/></div>}
+              <div className="fg"><label className="fl">{editUsr?'New Password (optional)':'Password'}</label><input className="fi" type="password" placeholder={editUsr?'Leave blank to keep current':'Min. 4 chars'} value={uPass} onChange={e=>setUPass(e.target.value)}/></div>
               <div className="fg">
                 <label className="fl">Avatar</label>
                 <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
@@ -784,7 +835,7 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
             <div className="modal-foot">
               <div className="btn-row">
                 <button className="btn ghost" onClick={()=>setShowUsr(false)}>Cancel</button>
-                <button className="btn" onClick={addUsr} disabled={saving}>{saving?'Registering...':'Register'}</button>
+                <button className="btn" onClick={addUsr} disabled={saving}>{saving?'Saving...':editUsr?'Update':'Register'}</button>
               </div>
             </div>
           </div>
