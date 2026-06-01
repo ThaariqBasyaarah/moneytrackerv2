@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"/>
   <meta name="theme-color" content="#0f0f0f"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -28,10 +28,43 @@
       --font-head: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif;
     }
     html, body { background: var(--bg); color: var(--text); font-family: var(--font-body); height: 100%; overflow: hidden; }
+
+    /* MOBILE */
     #root { height: 100vh; display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; position: relative; background: var(--bg); overflow: hidden; }
+    .desktop-main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
     .page-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 90px; }
     .page-scroll::-webkit-scrollbar { display: none; }
     .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: rgba(10,10,10,0.92); backdrop-filter: blur(20px); border-top: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-around; padding: 10px 0 22px; z-index: 100; }
+    .nav-brand { display: none; }
+    .nav-divider { display: none; }
+    .nav-fab-label { display: none; }
+
+    /* DESKTOP */
+    @media (min-width: 769px) {
+      #root { max-width: 100%; flex-direction: row; overflow: visible; }
+      .desktop-main { margin-left: 240px; overflow: hidden; height: 100vh; flex-direction: column; display: flex; }
+      .page-scroll { padding-bottom: 40px; }
+      .bottom-nav { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; max-width: 240px; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 28px 12px 24px; gap: 2px; border-top: none; border-right: 0.5px solid var(--border); transform: none; }
+      .nav-item { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px 16px; border-radius: 12px; width: 100%; flex: none; }
+      .nav-item svg { width: 20px; height: 20px; }
+      .nav-item span { font-size: 14px; letter-spacing: 0; font-weight: 400; }
+      .nav-item.active { background: var(--accent-bg); }
+      .nav-fab { width: 100%; border-radius: 12px; margin: 8px 0; padding: 13px 16px; justify-content: flex-start; gap: 12px; box-shadow: none; height: auto; }
+      .nav-fab svg { width: 20px; height: 20px; }
+      .nav-fab-label { display: block; font-size: 14px; font-weight: 700; font-family: var(--font-head); color: #0a0a0a; }
+      .nav-brand { display: flex; align-items: center; gap: 10px; padding: 0 16px; margin-bottom: 20px; }
+      .nav-brand-icon { font-size: 22px; }
+      .nav-brand-name { font-family: var(--font-head); font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+      .nav-divider { display: block; height: 0.5px; background: var(--border); margin: 8px 4px; }
+      .page-header { padding: 32px 40px 16px; }
+      .page-title { font-size: 32px; }
+      .section { padding: 0 40px; }
+      .hero-card { margin: 0 40px 24px; }
+      .pills-scroll { padding: 0 40px; }
+      .stats-grid { grid-template-columns: repeat(4, 1fr); }
+      .modal-overlay { align-items: center; }
+      .modal { max-width: 480px; border-radius: 24px; margin-bottom: 0; }
+    }
     .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); transition: all .2s; flex: 1; }
     .nav-item svg { width: 22px; height: 22px; transition: all .2s; stroke: var(--text3); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
     .nav-item span { font-size: 10px; font-family: var(--font-body); font-weight: 400; color: var(--text3); transition: all .2s; letter-spacing: .3px; }
@@ -88,9 +121,10 @@
     .btn.btn-danger { background: var(--red-bg); color: var(--red); border: 0.5px solid rgba(255,77,77,.2); }
     .btn-row { display: flex; gap: 10px; }
     .btn-row .btn { flex: 1; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
-    .modal { background: var(--bg2); border-radius: 24px 24px 0 0; padding: 12px 20px 32px; width: 100%; max-width: 430px; max-height: 92vh; overflow-y: auto; border-top: 0.5px solid var(--border); animation: slideUp .25s ease; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+    .modal { background: var(--bg2); border-radius: 24px 24px 0 0; padding: 12px 20px 32px; padding-bottom: max(32px, env(safe-area-inset-bottom, 32px)); width: 100%; max-width: 430px; max-height: 85dvh; overflow-y: scroll; overflow-x: hidden; border-top: 0.5px solid var(--border); animation: slideUp .25s ease; -webkit-overflow-scrolling: touch; }
     .modal::-webkit-scrollbar { display: none; }
+    .modal-inner-pad { padding-bottom: 40px; }
     @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
     .modal-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 24px; }
@@ -381,7 +415,7 @@ function AddTxModal({ groups, userId, onSave, onClose }) {
           <label className="form-label">Date</label>
           <input className="form-input" type="date" value={date} onChange={e=>setDate(e.target.value)}/>
         </div>
-        <div className="btn-row">
+        <div className="btn-row" style={{paddingBottom:16}}>
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn" onClick={handleSave} disabled={!desc||!amount||!groupId||saving}>{saving?'Saving...':'Save'}</button>
         </div>
@@ -731,7 +765,7 @@ function Master({ groups, setGroups, budgets, setBudgets, currentUser, onUsersCh
             <div className="form-group"><label className="form-label">Name</label><input className="form-input" placeholder="e.g. Groceries" value={newGroupName} onChange={e=>setNewGroupName(e.target.value)}/></div>
             <div className="form-group"><label className="form-label">Emoji</label><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{GROUP_EMOJIS.map(em=><div key={em} onClick={()=>setNewGroupEmoji(em)} style={{width:40,height:40,borderRadius:10,background:newGroupEmoji===em?'var(--accent-bg)':'var(--bg3)',border:`0.5px solid ${newGroupEmoji===em?'var(--accent)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,cursor:'pointer'}}>{em}</div>)}</div></div>
             <div className="form-group"><label className="form-label">Color</label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{GROUP_COLORS.map(c=><div key={c} onClick={()=>setNewGroupColor(c)} style={{width:32,height:32,borderRadius:'50%',background:c,border:`2px solid ${newGroupColor===c?'white':'transparent'}`,cursor:'pointer'}}/>)}</div></div>
-            <div className="btn-row"><button className="btn btn-ghost" onClick={()=>setShowAddGroup(false)}>Cancel</button><button className="btn" onClick={addGroup} disabled={saving}>{saving?'Saving...':'Add'}</button></div>
+            <div className="btn-row" style={{marginTop:8,paddingBottom:16}}><button className="btn btn-ghost" onClick={()=>setShowAddGroup(false)}>Cancel</button><button className="btn" onClick={addGroup} disabled={saving}>{saving?'Saving...':'Add'}</button></div>
           </div>
         </div>
       )}
@@ -746,7 +780,7 @@ function Master({ groups, setGroups, budgets, setBudgets, currentUser, onUsersCh
             <div className="form-group"><label className="form-label">Budget Type</label><div style={{display:'flex',gap:8}}>{['weekly','monthly'].map(type=><button key={type} onClick={()=>setBudgetType(type)} className={`btn ${budgetType===type?'':'btn-ghost'}`} style={{flex:1,padding:10,fontSize:13}}>{type==='weekly'?'📅 Weekly':'📆 Monthly'}</button>)}</div></div>
             <div className="form-group"><label className="form-label">From</label><input className="form-input" type="date" value={budgetFrom} onChange={e=>setBudgetFrom(e.target.value)}/></div>
             <div className="form-group"><label className="form-label">To</label><input className="form-input" type="date" value={budgetTo} onChange={e=>setBudgetTo(e.target.value)}/></div>
-            <div className="btn-row"><button className="btn btn-ghost" onClick={()=>{setShowAddBudget(false);setEditBudget(null);}}>Cancel</button><button className="btn" onClick={saveBudget} disabled={saving}>{saving?'Saving...':'💾 Save'}</button></div>
+            <div className="btn-row" style={{marginTop:8,paddingBottom:16}}><button className="btn btn-ghost" onClick={()=>{setShowAddBudget(false);setEditBudget(null);}}>Cancel</button><button className="btn" onClick={saveBudget} disabled={saving}>{saving?'Saving...':'💾 Save'}</button></div>
           </div>
         </div>
       )}
@@ -761,7 +795,7 @@ function Master({ groups, setGroups, budgets, setBudgets, currentUser, onUsersCh
             <div className="form-group"><label className="form-label">Username</label><input className="form-input" placeholder="e.g. thaariq" value={newUsername} onChange={e=>setNewUsername(e.target.value.toLowerCase().replace(/\s/g,''))}/></div>
             <div className="form-group"><label className="form-label">Password</label><input className="form-input" type="password" placeholder="Min. 4 characters" value={newPassword} onChange={e=>setNewPassword(e.target.value)}/></div>
             <div className="form-group"><label className="form-label">Avatar</label><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{AVATAR_OPTIONS.map(av=><div key={av} onClick={()=>setNewAvatar(av)} style={{width:42,height:42,borderRadius:10,background:newAvatar===av?'var(--accent-bg)':'var(--bg3)',border:`0.5px solid ${newAvatar===av?'var(--accent)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,cursor:'pointer'}}>{av}</div>)}</div></div>
-            <div className="btn-row"><button className="btn btn-ghost" onClick={()=>setShowAddUser(false)}>Cancel</button><button className="btn" onClick={addUser} disabled={saving}>{saving?'Registering...':'Register'}</button></div>
+            <div className="btn-row" style={{marginTop:8,paddingBottom:16}}><button className="btn btn-ghost" onClick={()=>setShowAddUser(false)}>Cancel</button><button className="btn" onClick={addUser} disabled={saving}>{saving?'Registering...':'Register'}</button></div>
           </div>
         </div>
       )}
@@ -837,45 +871,64 @@ function App() {
     </div>
   );
 
+  const PageContent = () => (
+    <>
+      {tab==='dashboard'&&<Dashboard transactions={transactions} groups={groups} budgets={budgets} onRefresh={()=>loadData(currentUser.id)} syncing={syncing}/>}
+      {tab==='transactions'&&<Transactions transactions={transactions} groups={groups} onDelete={deleteTx}/>}
+      {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} currentUser={currentUser}/>}
+      {tab==='profile'&&(
+        <div className="page-scroll">
+          <div className="page-header"><div className="page-title">Profile</div></div>
+          <div style={{padding:'0 20px'}}>
+            <div className="card" style={{display:'flex',alignItems:'center',gap:16,marginBottom:20}}>
+              <div style={{width:56,height:56,borderRadius:'50%',background:'var(--accent-bg)',border:'1.5px solid var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0}}>{currentUser.avatar||'👤'}</div>
+              <div>
+                <div style={{fontFamily:'var(--font-head)',fontSize:18,fontWeight:700}}>{currentUser.displayName}</div>
+                <div style={{fontSize:13,color:'var(--text2)',marginTop:2}}>@{currentUser.username}</div>
+                <div style={{fontSize:11,color:'var(--accent)',marginTop:4,display:'flex',alignItems:'center',gap:4}}><span className="sync-dot online"/>Cloud synced</div>
+              </div>
+            </div>
+            <div className="stats-grid" style={{marginBottom:20}}>
+              <div className="stat-card"><div className="stat-label">My Transactions</div><div className="stat-value accent">{transactions.length}</div></div>
+              <div className="stat-card"><div className="stat-label">Total Spent</div><div className="stat-value" style={{fontSize:15}}>Rp {Math.round(transactions.reduce((s,t)=>s+t.amount,0)/1000)}K</div></div>
+            </div>
+            <button className="btn" style={{marginBottom:10}} onClick={()=>loadData(currentUser.id)}>🔄 Refresh Data</button>
+            <button className="btn btn-danger" onClick={handleLogout}>🚪 Sign Out</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <>
       {toast && <Toast msg={toast.msg} icon={toast.icon}/>}
-      <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
-        {tab==='dashboard'&&<Dashboard transactions={transactions} groups={groups} budgets={budgets} onRefresh={()=>loadData(currentUser.id)} syncing={syncing}/>}
-        {tab==='transactions'&&<Transactions transactions={transactions} groups={groups} onDelete={deleteTx}/>}
-        {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} currentUser={currentUser}/>}
-        {tab==='profile'&&(
-          <div className="page-scroll">
-            <div className="page-header"><div className="page-title">Profile</div></div>
-            <div style={{padding:'0 20px'}}>
-              <div className="card" style={{display:'flex',alignItems:'center',gap:16,marginBottom:20}}>
-                <div style={{width:56,height:56,borderRadius:'50%',background:'var(--accent-bg)',border:'1.5px solid var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,flexShrink:0}}>{currentUser.avatar||'👤'}</div>
-                <div>
-                  <div style={{fontFamily:'var(--font-head)',fontSize:18,fontWeight:700}}>{currentUser.displayName}</div>
-                  <div style={{fontSize:13,color:'var(--text2)',marginTop:2}}>@{currentUser.username}</div>
-                  <div style={{fontSize:11,color:'var(--accent)',marginTop:4,display:'flex',alignItems:'center',gap:4}}><span className="sync-dot online"/>Cloud synced</div>
-                </div>
-              </div>
-              <div className="stats-grid" style={{marginBottom:20}}>
-                <div className="stat-card"><div className="stat-label">My Transactions</div><div className="stat-value accent">{transactions.length}</div></div>
-                <div className="stat-card"><div className="stat-label">Total Spent</div><div className="stat-value" style={{fontSize:15}}>Rp {Math.round(transactions.reduce((s,t)=>s+t.amount,0)/1000)}K</div></div>
-              </div>
-              <button className="btn" style={{marginBottom:10}} onClick={()=>loadData(currentUser.id)}>🔄 Refresh Data</button>
-              <button className="btn btn-danger" onClick={handleLogout}>🚪 Sign Out</button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Desktop sidebar nav */}
       <nav className="bottom-nav">
+        <div className="nav-brand">
+          <span className="nav-brand-icon">💸</span>
+          <span className="nav-brand-name">Trackr</span>
+        </div>
+        <div className="nav-divider"/>
+        <div className="nav-fab" onClick={()=>setShowAdd(true)}>
+          <Icon name="plus"/>
+          <span className="nav-fab-label">Add Transaction</span>
+        </div>
+        <div className="nav-divider"/>
         <div className={`nav-item ${tab==='dashboard'?'active':''}`} onClick={()=>setTab('dashboard')}><Icon name="home"/><span>Overview</span></div>
         <div className={`nav-item ${tab==='transactions'?'active':''}`} onClick={()=>setTab('transactions')}><Icon name="receipt"/><span>History</span></div>
-        <div className="nav-fab" onClick={()=>setShowAdd(true)}><Icon name="plus"/></div>
         <div className={`nav-item ${tab==='master'?'active':''}`} onClick={()=>setTab('master')}><Icon name="tag"/><span>Master</span></div>
-        <div className={`nav-item ${tab==='profile'?'active':''}`} onClick={()=>setTab('profile')}>
-          <Icon name="user"/>
-          <span style={{fontSize:10,color:tab==='profile'?'var(--accent)':'var(--text3)',fontWeight:tab==='profile'?500:400}}>{currentUser.displayName.split(' ')[0]}</span>
+        <div className={`nav-item ${tab==='profile'?'active':''}`} onClick={()=>setTab('profile')}><Icon name="user"/><span style={{color:tab==='profile'?'var(--accent)':'var(--text3)',fontWeight:tab==='profile'?500:400}}>{currentUser.displayName.split(' ')[0]}</span></div>
+        <div className="nav-divider" style={{marginTop:'auto'}}/>
+        <div className="nav-item" onClick={handleLogout}>
+          <svg viewBox="0 0 24 24" width={20} height={20} fill="none" strokeWidth={1.6} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span>Sign Out</span>
         </div>
       </nav>
+      {/* Page content */}
+      <div className="desktop-main">
+        <PageContent/>
+      </div>
       {showAdd&&<AddTxModal groups={groups} userId={currentUser.id} onSave={addTx} onClose={()=>setShowAdd(false)}/>}
     </>
   );
