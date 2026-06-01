@@ -122,9 +122,10 @@
     .btn-row { display: flex; gap: 10px; }
     .btn-row .btn { flex: 1; }
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
-    .modal { background: var(--bg2); border-radius: 24px 24px 0 0; padding: 12px 20px 32px; padding-bottom: max(32px, env(safe-area-inset-bottom, 32px)); width: 100%; max-width: 430px; max-height: 85dvh; overflow-y: scroll; overflow-x: hidden; border-top: 0.5px solid var(--border); animation: slideUp .25s ease; -webkit-overflow-scrolling: touch; }
-    .modal::-webkit-scrollbar { display: none; }
-    .modal-inner-pad { padding-bottom: 40px; }
+    .modal { background: var(--bg2); border-radius: 24px 24px 0 0; width: 100%; max-width: 430px; max-height: 88dvh; display: flex; flex-direction: column; border-top: 0.5px solid var(--border); animation: slideUp .25s ease; overflow: hidden; }
+    .modal-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 20px 8px; -webkit-overflow-scrolling: touch; }
+    .modal-scroll::-webkit-scrollbar { display: none; }
+    .modal-footer { padding: 12px 20px; padding-bottom: max(20px, env(safe-area-inset-bottom, 20px)); background: var(--bg2); border-top: 0.5px solid var(--border); flex-shrink: 0; }
     @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     .modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
     .modal-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 24px; }
@@ -364,6 +365,7 @@ function AddTxModal({ groups, userId, onSave, onClose }) {
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
+        <div className="modal-scroll">
         <div className="modal-handle"/>
         <div className="modal-title">Add Transaction</div>
         {!photo ? (
@@ -415,9 +417,12 @@ function AddTxModal({ groups, userId, onSave, onClose }) {
           <label className="form-label">Date</label>
           <input className="form-input" type="date" value={date} onChange={e=>setDate(e.target.value)}/>
         </div>
-        <div className="btn-row" style={{paddingBottom:16}}>
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn" onClick={handleSave} disabled={!desc||!amount||!groupId||saving}>{saving?'Saving...':'Save'}</button>
+        </div>{/* end modal-scroll */}
+        <div className="modal-footer">
+          <div className="btn-row">
+            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn" onClick={handleSave} disabled={!desc||!amount||!groupId||saving}>{saving?'Saving...':'Save'}</button>
+          </div>
         </div>
       </div>
     </div>
@@ -760,46 +765,61 @@ function Master({ groups, setGroups, budgets, setBudgets, currentUser, onUsersCh
       {showAddGroup&&(
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAddGroup(false)}>
           <div className="modal">
-            <div className="modal-handle"/>
-            <div className="modal-title">New Category</div>
-            <div className="form-group"><label className="form-label">Name</label><input className="form-input" placeholder="e.g. Groceries" value={newGroupName} onChange={e=>setNewGroupName(e.target.value)}/></div>
-            <div className="form-group"><label className="form-label">Emoji</label><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{GROUP_EMOJIS.map(em=><div key={em} onClick={()=>setNewGroupEmoji(em)} style={{width:40,height:40,borderRadius:10,background:newGroupEmoji===em?'var(--accent-bg)':'var(--bg3)',border:`0.5px solid ${newGroupEmoji===em?'var(--accent)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,cursor:'pointer'}}>{em}</div>)}</div></div>
-            <div className="form-group"><label className="form-label">Color</label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{GROUP_COLORS.map(c=><div key={c} onClick={()=>setNewGroupColor(c)} style={{width:32,height:32,borderRadius:'50%',background:c,border:`2px solid ${newGroupColor===c?'white':'transparent'}`,cursor:'pointer'}}/>)}</div></div>
-            <div className="btn-row" style={{marginTop:8,paddingBottom:16}}><button className="btn btn-ghost" onClick={()=>setShowAddGroup(false)}>Cancel</button><button className="btn" onClick={addGroup} disabled={saving}>{saving?'Saving...':'Add'}</button></div>
+            <div className="modal-scroll">
+              <div className="modal-handle"/>
+              <div className="modal-title">New Category</div>
+              <div className="form-group"><label className="form-label">Name</label><input className="form-input" placeholder="e.g. Groceries" value={newGroupName} onChange={e=>setNewGroupName(e.target.value)}/></div>
+              <div className="form-group"><label className="form-label">Emoji</label><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{GROUP_EMOJIS.map(em=><div key={em} onClick={()=>setNewGroupEmoji(em)} style={{width:40,height:40,borderRadius:10,background:newGroupEmoji===em?'var(--accent-bg)':'var(--bg3)',border:`0.5px solid ${newGroupEmoji===em?'var(--accent)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,cursor:'pointer'}}>{em}</div>)}</div></div>
+              <div className="form-group"><label className="form-label">Color</label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{GROUP_COLORS.map(c=><div key={c} onClick={()=>setNewGroupColor(c)} style={{width:32,height:32,borderRadius:'50%',background:c,border:`2px solid ${newGroupColor===c?'white':'transparent'}`,cursor:'pointer'}}/>)}</div></div>
+            </div>
+            <div className="modal-footer">
+              <div className="btn-row"><button className="btn btn-ghost" onClick={()=>setShowAddGroup(false)}>Cancel</button><button className="btn" onClick={addGroup} disabled={saving}>{saving?'Saving...':'Add'}</button></div>
+            </div>
           </div>
         </div>
-      )}
+      )})}
 
       {showAddBudget&&(
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAddBudget(false)}>
           <div className="modal">
-            <div className="modal-handle"/>
-            <div className="modal-title">{editBudget?'Edit Budget':'Set Budget'}</div>
-            <div className="form-group"><label className="form-label">Category</label><select className="form-input" value={budgetGroupId} onChange={e=>setBudgetGroupId(e.target.value)}>{groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}</select></div>
-            <div className="form-group"><label className="form-label">Budget Amount (IDR)</label><input className="form-input" type="number" inputMode="numeric" placeholder="e.g. 1500000" value={budgetAmount} onChange={e=>setBudgetAmount(e.target.value)}/></div>
-            <div className="form-group"><label className="form-label">Budget Type</label><div style={{display:'flex',gap:8}}>{['weekly','monthly'].map(type=><button key={type} onClick={()=>setBudgetType(type)} className={`btn ${budgetType===type?'':'btn-ghost'}`} style={{flex:1,padding:10,fontSize:13}}>{type==='weekly'?'📅 Weekly':'📆 Monthly'}</button>)}</div></div>
-            <div className="form-group"><label className="form-label">From</label><input className="form-input" type="date" value={budgetFrom} onChange={e=>setBudgetFrom(e.target.value)}/></div>
-            <div className="form-group"><label className="form-label">To</label><input className="form-input" type="date" value={budgetTo} onChange={e=>setBudgetTo(e.target.value)}/></div>
-            <div className="btn-row" style={{marginTop:8,paddingBottom:16}}><button className="btn btn-ghost" onClick={()=>{setShowAddBudget(false);setEditBudget(null);}}>Cancel</button><button className="btn" onClick={saveBudget} disabled={saving}>{saving?'Saving...':'💾 Save'}</button></div>
+            <div className="modal-scroll">
+              <div className="modal-handle"/>
+              <div className="modal-title">{editBudget?'Edit Budget':'Set Budget'}</div>
+              <div className="form-group"><label className="form-label">Category</label><select className="form-input" value={budgetGroupId} onChange={e=>setBudgetGroupId(e.target.value)}>{groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}</select></div>
+              <div className="form-group"><label className="form-label">Budget Amount (IDR)</label><input className="form-input" type="number" inputMode="numeric" placeholder="e.g. 1500000" value={budgetAmount} onChange={e=>setBudgetAmount(e.target.value)}/></div>
+              <div className="form-group"><label className="form-label">Budget Type</label><div style={{display:'flex',gap:8}}>{['weekly','monthly'].map(type=><button key={type} onClick={()=>setBudgetType(type)} className={`btn ${budgetType===type?'':'btn-ghost'}`} style={{flex:1,padding:10,fontSize:13}}>{type==='weekly'?'📅 Weekly':'📆 Monthly'}</button>)}</div></div>
+              <div className="form-group"><label className="form-label">From</label><input className="form-input" type="date" value={budgetFrom} onChange={e=>setBudgetFrom(e.target.value)}/></div>
+              <div className="form-group"><label className="form-label">To</label><input className="form-input" type="date" value={budgetTo} onChange={e=>setBudgetTo(e.target.value)}/></div>
+            </div>
+            <div className="modal-footer">
+              <div className="btn-row"><button className="btn btn-ghost" onClick={()=>{setShowAddBudget(false);setEditBudget(null);}}>Cancel</button><button className="btn" onClick={saveBudget} disabled={saving}>{saving?'Saving...':'💾 Save'}</button></div>
+            </div>
           </div>
         </div>
-      )}
+      )})}
 
       {showAddUser&&(
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowAddUser(false)}>
           <div className="modal">
-            <div className="modal-handle"/>
-            <div className="modal-title">Register User</div>
-            {userError&&<div style={{background:'var(--red-bg)',border:'0.5px solid rgba(255,77,77,.2)',borderRadius:10,padding:'10px 14px',fontSize:13,color:'var(--red)',marginBottom:16}}>⚠️ {userError}</div>}
-            <div className="form-group"><label className="form-label">Display Name</label><input className="form-input" placeholder="e.g. Thaariq" value={newDisplayName} onChange={e=>setNewDisplayName(e.target.value)}/></div>
-            <div className="form-group"><label className="form-label">Username</label><input className="form-input" placeholder="e.g. thaariq" value={newUsername} onChange={e=>setNewUsername(e.target.value.toLowerCase().replace(/\s/g,''))}/></div>
-            <div className="form-group"><label className="form-label">Password</label><input className="form-input" type="password" placeholder="Min. 4 characters" value={newPassword} onChange={e=>setNewPassword(e.target.value)}/></div>
-            <div className="form-group"><label className="form-label">Avatar</label><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{AVATAR_OPTIONS.map(av=><div key={av} onClick={()=>setNewAvatar(av)} style={{width:42,height:42,borderRadius:10,background:newAvatar===av?'var(--accent-bg)':'var(--bg3)',border:`0.5px solid ${newAvatar===av?'var(--accent)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,cursor:'pointer'}}>{av}</div>)}</div></div>
-            <div className="btn-row" style={{marginTop:8,paddingBottom:16}}><button className="btn btn-ghost" onClick={()=>setShowAddUser(false)}>Cancel</button><button className="btn" onClick={addUser} disabled={saving}>{saving?'Registering...':'Register'}</button></div>
+            <div className="modal-scroll">
+              <div className="modal-handle"/>
+              <div className="modal-title">Register User</div>
+              {userError&&<div style={{background:'var(--red-bg)',border:'0.5px solid rgba(255,77,77,.2)',borderRadius:10,padding:'10px 14px',fontSize:13,color:'var(--red)',marginBottom:16}}>⚠️ {userError}</div>}
+              <div className="form-group"><label className="form-label">Display Name</label><input className="form-input" placeholder="e.g. Thaariq" value={newDisplayName} onChange={e=>setNewDisplayName(e.target.value)}/></div>
+              <div className="form-group"><label className="form-label">Username</label><input className="form-input" placeholder="e.g. thaariq" value={newUsername} onChange={e=>setNewUsername(e.target.value.toLowerCase().replace(/\s/g,''))}/></div>
+              <div className="form-group"><label className="form-label">Password</label><input className="form-input" type="password" placeholder="Min. 4 characters" value={newPassword} onChange={e=>setNewPassword(e.target.value)}/></div>
+              <div className="form-group"><label className="form-label">Avatar</label><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{AVATAR_OPTIONS.map(av=><div key={av} onClick={()=>setNewAvatar(av)} style={{width:42,height:42,borderRadius:10,background:newAvatar===av?'var(--accent-bg)':'var(--bg3)',border:`0.5px solid ${newAvatar===av?'var(--accent)':'var(--border)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,cursor:'pointer'}}>{av}</div>)}</div></div>
+            </div>
+            <div className="modal-footer">
+              <div className="btn-row"><button className="btn btn-ghost" onClick={()=>setShowAddUser(false)}>Cancel</button><button className="btn" onClick={addUser} disabled={saving}>{saving?'Registering...':'Register'}</button></div>
+            </div>
           </div>
         </div>
       )}
+
     </div>
+  );
+}div>
   );
 }
 
