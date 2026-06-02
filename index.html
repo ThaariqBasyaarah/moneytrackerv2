@@ -408,16 +408,112 @@ function AddTx({groups,userId,createdBy,onSave,onClose}){
   );
 }
 
+// ── EDIT TX MODAL ────────────────────────────────────────────────────
+function EditTx({tx,groups,onSave,onClose}){
+  const [desc,setDesc]=useState(tx.description);
+  const [amt,setAmt]=useState(String(tx.amount));
+  const [gid,setGid]=useState(tx.group_id);
+  const [date,setDate]=useState(tx.date);
+  const [saving,setSaving]=useState(false);
+  const parseAmt=v=>v.replace(/\./g,'').replace(/,/g,'').replace(/[^0-9]/g,'');
+  const save=async()=>{
+    if(!desc.trim()||!amt||!gid)return;
+    setSaving(true);
+    const updated={...tx,description:desc.trim(),amount:parseInt(parseAmt(amt)),group_id:gid,date};
+    await onSave(updated);setSaving(false);onClose();
+  };
+  return(
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-body">
+          <div className="modal-title">Edit Transaction</div>
+          <div className="fg"><label className="fl">Description</label><input className="fi" placeholder="e.g. Lunch at warung" value={desc} onChange={e=>setDesc(e.target.value)}/></div>
+          <div className="fg"><label className="fl">Amount (IDR)</label>
+            <input className="fi" inputMode="numeric" placeholder="0" value={amt?parseInt(parseAmt(amt)||0).toLocaleString('id-ID'):''} onChange={e=>setAmt(parseAmt(e.target.value))}/>
+          </div>
+          <div className="fg"><label className="fl">Category</label>
+            <select className="fi" value={gid} onChange={e=>setGid(e.target.value)}>
+              {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
+            </select>
+          </div>
+          <div className="fg"><label className="fl">Date</label><input className="fi" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+        </div>
+        <div className="modal-foot">
+          <div className="btn-row">
+            <button className="btn ghost" onClick={onClose}>Cancel</button>
+            <button className="btn" onClick={save} disabled={!desc||!amt||!gid||saving}>{saving?'Saving...':'Update'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── EDIT TX MODAL ─────────────────────────────────────────────────────
+function EditTx({tx,groups,onSave,onClose}){
+  const [desc,setDesc]=useState(tx.description);
+  const [amt,setAmt]=useState(String(tx.amount));
+  const [gid,setGid]=useState(tx.group_id);
+  const [date,setDate]=useState(tx.date);
+  const [saving,setSaving]=useState(false);
+  const parseAmt=v=>v.replace(/\./g,'').replace(/,/g,'').replace(/\D/g,'');
+
+  const save=async()=>{
+    if(!desc.trim()||!amt||!gid)return;
+    setSaving(true);
+    const updated={...tx,description:desc.trim(),amount:parseInt(parseAmt(amt)),group_id:gid,date};
+    await onSave(updated);
+    setSaving(false);onClose();
+  };
+
+  return(
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-body">
+          <div className="modal-title">Edit Transaction</div>
+          <div className="fg"><label className="fl">Description</label><input className="fi" value={desc} onChange={e=>setDesc(e.target.value)}/></div>
+          <div className="fg"><label className="fl">Amount (IDR)</label>
+            <input className="fi" inputMode="numeric" value={amt?parseInt(parseAmt(amt)||0).toLocaleString('id-ID'):''} onChange={e=>setAmt(parseAmt(e.target.value))}/>
+          </div>
+          <div className="fg"><label className="fl">Category</label>
+            <select className="fi" value={gid} onChange={e=>setGid(e.target.value)}>
+              {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
+            </select>
+          </div>
+          <div className="fg"><label className="fl">Date</label><input className="fi" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+        </div>
+        <div className="modal-foot">
+          <div className="btn-row">
+            <button className="btn ghost" onClick={onClose}>Cancel</button>
+            <button className="btn" onClick={save} disabled={!desc||!amt||!gid||saving}>{saving?'Saving...':'Update'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── DASHBOARD ─────────────────────────────────────────────────────────
-function Dashboard({txs,groups,budgets,onRefresh,syncing}){
+function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
   const [mon,setMon]=useState(new Date().getMonth());
   const [yr]=useState(new Date().getFullYear());
   const [wf,setWf]=useState(()=>{const d=new Date();d.setDate(d.getDate()-6);return d.toISOString().split('T')[0]});
   const [wt,setWt]=useState(tod());
   const [lim,setLim]=useState(5);
+  const [selDay,setSelDay]=useState(null);
   const [fg,setFg]=useState('all');
 
-  const mTx=useMemo(()=>txs.filter(t=>{const d=new Date(t.date);return d.getMonth()===mon&&d.getFullYear()===yr}),[txs,mon,yr]);
+  // Period: 25th of prev month to 24th of selected month
+  const mTx=useMemo(()=>{
+    // "mon" = selected month (0-indexed)
+    // Period starts: 25th of (mon-1), ends: 24th of (mon)
+    const periodStart=new Date(yr, mon-1, 25);
+    const periodEnd=new Date(yr, mon, 24);
+    const startStr=periodStart.toISOString().split('T')[0];
+    const endStr=periodEnd.toISOString().split('T')[0];
+    return txs.filter(t=>t.date>=startStr&&t.date<=endStr);
+  },[txs,mon,yr]);
   const wTx=useMemo(()=>txs.filter(t=>t.date>=wf&&t.date<=wt),[txs,wf,wt]);
   const mTotal=useMemo(()=>mTx.reduce((s,t)=>s+t.amount,0),[mTx]);
   const wTotal=useMemo(()=>wTx.reduce((s,t)=>s+t.amount,0),[wTx]);
@@ -446,7 +542,7 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing}){
       <div className="hero-card fade">
         <div className="hero-label">TOTAL SPENT — {MN[mon].toUpperCase()}</div>
         <div className="hero-amt"><span className="hero-cur">Rp</span>{mTotal.toLocaleString('id-ID')}</div>
-        <div className="hero-sub">{mTx.length} transactions this month</div>
+        <div className="hero-sub">{mTx.length} tx · {new Date(yr,mon-1,25).toLocaleDateString('id-ID',{day:'numeric',month:'short'})} – {new Date(yr,mon,24).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div>
         {(()=>{const tb=budgets.filter(b=>b.type==='monthly').reduce((s,b)=>s+b.amount,0);if(!tb)return null;const pct=Math.min((mTotal/tb)*100,100);return(<><div className="bar-track"><div className="bar-fill" style={{width:`${pct}%`,background:pct>90?'#ff4d4d':pct>70?'#ffb347':'#c8f560'}}/></div><div className="bar-labels"><span>{pct.toFixed(0)}% of budget</span><span>{idr(tb)}</span></div></>)})()}
       </div>
 
@@ -467,10 +563,18 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing}){
             <span style={{color:'var(--t3)',fontSize:12,flexShrink:0}}>to</span>
             <input type="date" className="fi-sm" value={wt} onChange={e=>setWt(e.target.value)}/>
           </div>
+          {selDay&&(
+            <div style={{background:'var(--abg)',border:'.5px solid var(--a)',borderRadius:10,padding:'8px 14px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:13,color:'var(--t2)'}}>{new Date(selDay.date).toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'short'})}</span>
+              <span style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,color:'var(--a)'}}>{idr(selDay.tot)}</span>
+            </div>
+          )}
           <div className="wchart">
             {wDays.map(d=>(
-              <div key={d.date} className="wbar-wrap">
-                <div className="wbar-track"><div className="wbar-fill" style={{height:`${Math.round((d.tot/maxD)*100)}%`,background:d.isToday?'#c8f560':'rgba(200,245,96,.35)'}}/></div>
+              <div key={d.date} className="wbar-wrap" onClick={()=>setSelDay(selDay?.date===d.date?null:d)} style={{cursor:'pointer'}}>
+                <div className="wbar-track" style={{outline:selDay?.date===d.date?'2px solid var(--a)':'none',borderRadius:6}}>
+                  <div className="wbar-fill" style={{height:`${Math.round((d.tot/maxD)*100)}%`,background:selDay?.date===d.date?'#c8f560':d.isToday?'#c8f560':'rgba(200,245,96,.35)'}}/>
+                </div>
                 <div className={`wday ${d.isToday?'today':''}`}>{d.label}</div>
               </div>
             ))}
@@ -530,7 +634,12 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing}){
                 <div className="tx-icon" style={{background:`${g?.color||'#888'}20`}}>{g?.emoji||'💰'}</div>
                 <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} · {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}{t.created_by?' · '+t.created_by:''}</div></div>
                 {t.photo&&<img src={t.photo} alt="" className="tx-thumb"/>}
-                <div><div className="tx-amt">-{idr(t.amount)}</div><div className="tx-date">{t.date===tod()?'Today':t.date}</div></div>
+                <div style={{textAlign:'right'}}>
+                  <div className="tx-amt">-{idr(t.amount)}</div>
+                  <div style={{display:'flex',gap:6,justifyContent:'flex-end',marginTop:4}}>
+                    <button onClick={()=>onEditTx(t)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:12,padding:0}}>✏️</button>
+                  </div>
+                </div>
               </div>
             );})}
         </div>
@@ -541,7 +650,7 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing}){
 }
 
 // ── HISTORY ───────────────────────────────────────────────────────────
-function History({txs,groups,onDelete}){
+function History({txs,groups,onDelete,onEdit}){
   const [fg,setFg]=useState('all');
   const [q,setQ]=useState('');
   const [dir,setDir]=useState('desc');
@@ -573,7 +682,10 @@ function History({txs,groups,onDelete}){
                 {t.photo&&<img src={t.photo} alt="" className="tx-thumb"/>}
                 <div style={{textAlign:'right'}}>
                   <div className="tx-amt">-{idr(t.amount)}</div>
-                  <button onClick={()=>onDelete(t.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:12,marginTop:4}}>🗑</button>
+                  <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:4}}>
+                    <button onClick={()=>onEdit(t)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:12,padding:0}}>✏️</button>
+                    <button onClick={()=>onDelete(t.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:12,padding:0}}>🗑</button>
+                  </div>
                 </div>
               </div>
             );})}
@@ -875,6 +987,7 @@ function App(){
   const [user,setUser]=useState(()=>getSession());
   const [tab,setTab]=useState('dash');
   const [showAdd,setShowAdd]=useState(false);
+  const [editTxItem,setEditTxItem]=useState(null);
   const [txs,setTxs]=useState([]);
   const [groups,setGroups]=useState([]);
   const [budgets,setBudgets]=useState([]);
@@ -903,6 +1016,7 @@ function App(){
   const logout=()=>{clearSession();setUser(null);setTxs([]);setGroups([]);setBudgets([])};
   const addTx=async tx=>{try{await db.post('transactions',tx);setTxs(a=>[tx,...a]);showT('Saved ☁️')}catch{showT('Failed','⚠️')}};
   const delTx=async id=>{try{await db.del('transactions',id);setTxs(a=>a.filter(t=>t.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
+  const updateTx=async tx=>{try{await db.patch('transactions',tx.id,tx);setTxs(a=>a.map(t=>t.id===tx.id?tx:t));showT('Updated ✓');setEditTxItem(null);}catch{showT('Failed','⚠️')}};
 
   if(!user)return <div style={{flex:1,display:'flex',flexDirection:'column',height:'100vh',background:'var(--bg)'}}><Login onLogin={login}/></div>;
   if(loading)return <div style={{flex:1,display:'flex',flexDirection:'column',height:'100vh',alignItems:'center',justifyContent:'center',background:'var(--bg)',gap:16}}><div style={{fontSize:48}}>💸</div><div style={{fontFamily:'var(--fh)',fontSize:24,fontWeight:800}}>Trackr</div><div style={{fontSize:13,color:'var(--t2)',display:'flex',alignItems:'center',gap:6}}><span className="sync-dot spin"/>Loading...</div></div>;
@@ -935,8 +1049,8 @@ function App(){
 
       {/* Main content */}
       <div className="main-wrap">
-        {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} onRefresh={()=>load(user.id)} syncing={syncing}/>}
-        {tab==='hist'&&<History txs={txs} groups={groups} onDelete={delTx}/>}
+        {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
+        {tab==='hist'&&<History txs={txs} groups={groups} onDelete={delTx} onEdit={setEditTxItem}/>}
         {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} currentUser={user}/>}
         {tab==='profile'&&<Profile currentUser={user} txs={txs} onRefresh={()=>load(user.id)} onLogout={logout}/>}
       </div>
@@ -951,6 +1065,7 @@ function App(){
       </nav>
 
       {showAdd&&<AddTx groups={groups} userId={user.id} createdBy={user.displayName} onSave={addTx} onClose={()=>setShowAdd(false)}/>}
+      {editTxItem&&<EditTx tx={editTxItem} groups={groups} onSave={updateTx} onClose={()=>setEditTxItem(null)}/>}
     </>
   );
 }
