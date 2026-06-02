@@ -1307,39 +1307,123 @@ function SpendAnalysis({txs,groups,budgets}){
 
   const active=hovered!=null?slices[hovered]:null;
 
-  // Rule-based insights dari data
+  // Previous month data for comparison
+  const prevTx=useMemo(()=>{
+    const s=new Date(selYear,selMonth-2,25).toISOString().split('T')[0];
+    const e=new Date(selYear,selMonth-1,24).toISOString().split('T')[0];
+    return txs.filter(t=>t.date>=s&&t.date<=e);
+  },[txs,selMonth,selYear]);
+  const prevTotal=useMemo(()=>prevTx.reduce((s,t)=>s+t.amount,0),[prevTx]);
+
+  // Rule-based insights
   const insights=useMemo(()=>{
     if(!mTx.length||!total)return[];
     const list=[];
-    // 1. Top category dominance
+
+    // 1. MoM comparison
+    if(prevTotal>0){
+      const diff=total-prevTotal;
+      const pct=Math.abs((diff/prevTotal)*100).toFixed(0);
+      const prevMonthName=MN[selMonth-1>=0?selMonth-1:11];
+      if(diff>0){
+        list.push({
+          icon:'📈',
+          text:`Pengeluaran naik ${pct}% vs ${prevMonthName} (${idr(prevTotal)}). Selisih +${idr(diff)}.`,
+          action:`Coba kurangi pengeluaran ${idr(Math.abs(diff))} bulan depan untuk kembali ke level ${prevMonthName}.`
+        });
+      } else if(diff<0){
+        list.push({
+          icon:'📉',
+          text:`Pengeluaran turun ${pct}% vs ${prevMonthName} (${idr(prevTotal)}). Hemat ${idr(Math.abs(diff))}!`,
+          action:`Pertahankan kebiasaan ini. Jika konsisten, bisa hemat ${idr(Math.abs(diff)*12)}/tahun.`
+        });
+      } else {
+        list.push({icon:'📊',text:`Pengeluaran sama dengan ${prevMonthName} (${idr(prevTotal)}).`,action:null});
+      }
+    } else {
+      list.push({icon:'📊',text:`Belum ada data bulan sebelumnya untuk perbandingan.`,action:null});
+    }
+
+    // 2. Top category dominance + action
     if(slices.length>0){
       const top=slices[0];
-      if(top.pct>0.5) list.push({icon:'⚠️',text:`${top.emoji} ${top.name} menghabiskan ${(top.pct*100).toFixed(0)}% dari total pengeluaran bulan ini. Pertimbangkan untuk mengurangi.`});
-      else list.push({icon:'📊',text:`Pengeluaran terbesar di ${top.emoji} ${top.name} sebesar ${idr(top.amt)} (${(top.pct*100).toFixed(0)}% dari total).`});
+      const saving50=Math.round(top.amt*0.5);
+      if(top.pct>0.4){
+        list.push({
+          icon:'⚠️',
+          text:`${top.emoji} ${top.name} mendominasi ${(top.pct*100).toFixed(0)}% pengeluaran (${idr(top.amt)}).`,
+          action:`Jika dikurangi 50%, potensi penghematan ${idr(saving50)}/bulan atau ${idr(saving50*12)}/tahun.`
+        });
+      } else {
+        list.push({
+          icon:'📊',
+          text:`Top category: ${top.emoji} ${top.name} sebesar ${idr(top.amt)} (${(top.pct*100).toFixed(0)}% dari total).`,
+          action:`Pengeluaran cukup terdistribusi. Bagus!`
+        });
+      }
     }
-    // 2. Budget check
+
+    // 3. Budget check + action
     const overBudget=groups.filter(g=>{
       const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
-      if(!b)return false;
-      return(byG[g.id]||0)>b.amount;
+      return b&&(byG[g.id]||0)>b.amount;
     });
-    if(overBudget.length>0) list.push({icon:'🚨',text:`${overBudget.map(g=>g.name).join(', ')} sudah melebihi budget bulan ini!`});
-    else if(budgets.length>0) list.push({icon:'✅',text:`Semua kategori masih dalam batas budget. Kerja bagus!`});
-    // 3. Recurring
+    const nearBudget=groups.filter(g=>{
+      const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
+      if(!b)return false;
+      const pct=(byG[g.id]||0)/b.amount;
+      return pct>=0.8&&pct<1;
+    });
+    if(overBudget.length>0){
+      const totalOver=overBudget.reduce((s,g)=>{
+        const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
+        return s+((byG[g.id]||0)-b.amount);
+      },0);
+      list.push({
+        icon:'🚨',
+        text:`${overBudget.map(g=>g.name).join(', ')} melebihi budget total ${idr(totalOver)}.`,
+        action:`Stop atau tunda pengeluaran di kategori tersebut hingga akhir periode.`
+      });
+    } else if(nearBudget.length>0){
+      list.push({
+        icon:'⚠️',
+        text:`${nearBudget.map(g=>g.name).join(', ')} sudah mencapai >80% budget.`,
+        action:`Hati-hati, sisa budget tinggal sedikit. Pantau pengeluaran lebih ketat.`
+      });
+    } else if(budgets.length>0){
+      list.push({icon:'✅',text:`Semua kategori masih dalam batas budget. Kerja bagus!`,action:null});
+    }
+
+    // 4. Recurring + action
     if(recurring.length>0){
       const top=recurring[0];
-      list.push({icon:'🔄',text:`"${top.desc}" muncul ${top.count}x dengan total ${idr(top.total)}. Ini pengeluaran rutin terbesar kamu.`});
+      const saving=Math.round(top.total*0.5);
+      list.push({
+        icon:'🔄',
+        text:`"${top.desc}" rutin ${top.count}x = ${idr(top.total)} bulan ini.`,
+        action:`Jika frekuensinya dikurangi setengah, hemat ${idr(saving)}/bulan.`
+      });
     }
-    // 4. Daily average
+
+    // 5. Daily average + action
     const avgDay=Math.round(total/30);
-    list.push({icon:'📅',text:`Rata-rata pengeluaran harian bulan ini ${idr(avgDay)}. ${avgDay>200000?'Lumayan tinggi, coba pantau lebih ketat.':'Masih terkendali.'}`});
-    // 5. Transaction count insight
-    if(mTx.length>0){
-      const avgAmt=Math.round(total/mTx.length);
-      list.push({icon:'💡',text:`Rata-rata per transaksi ${idr(avgAmt)} dari ${mTx.length} transaksi. ${mTx.length>50?'Transaksi cukup banyak, pertimbangkan cek lebih sering.':'Frekuensi transaksi normal.'}`});
-    }
-    return list.slice(0,4);
-  },[mTx,total,slices,byG,budgets,groups,recurring]);
+    const prevAvgDay=prevTotal?Math.round(prevTotal/30):0;
+    list.push({
+      icon:'📅',
+      text:`Rata-rata harian ${idr(avgDay)}${prevAvgDay?` (bulan lalu: ${idr(prevAvgDay)})`:''}.`,
+      action:avgDay>300000?`Target turunkan ke ${idr(Math.round(avgDay*0.8))}/hari untuk hemat ${idr(Math.round(avgDay*0.2*30))}/bulan.`:null
+    });
+
+    // 6. Avg per transaction
+    const avgAmt=Math.round(total/mTx.length);
+    list.push({
+      icon:'💡',
+      text:`${mTx.length} transaksi, rata-rata ${idr(avgAmt)}/transaksi.`,
+      action:mTx.length>50?`Frekuensi tinggi. Coba batching belanja untuk kurangi impuls belanja.`:null
+    });
+
+    return list;
+  },[mTx,total,prevTotal,prevTx,slices,byG,budgets,groups,recurring,selMonth,selYear]);
 
   return(
     <div className="page-scroll">
@@ -1364,6 +1448,41 @@ function SpendAnalysis({txs,groups,budgets}){
         <div className="section"><div className="card" style={{textAlign:'center',padding:32,color:'var(--t3)',fontSize:13}}>No transactions this period</div></div>
       ):(
         <>
+          {/* Spending Insights */}
+          <div className="section">
+            <div className="fxb" style={{marginBottom:12}}>
+              <div className="section-label" style={{margin:0}}>Spending Insights ✨</div>
+              <button onClick={()=>setShowInsights(v=>!v)} style={{background:'var(--abg)',border:'.5px solid var(--a)',borderRadius:20,padding:'5px 14px',fontSize:12,color:'var(--a)',cursor:'pointer',fontFamily:'var(--fb)',fontWeight:500}}>
+                {showInsights?'Hide':'Show'}
+              </button>
+            </div>
+            {showInsights&&(
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {insights.map((ins,i)=>(
+                  <div key={i} className="card" style={{padding:16}}>
+                    <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+                      <div style={{fontSize:20,flexShrink:0,marginTop:1}}>{ins.icon}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:14,lineHeight:1.5,color:'var(--t1)'}}>{ins.text}</div>
+                        {ins.action&&(
+                          <div style={{marginTop:8,padding:'8px 10px',background:'var(--abg)',borderRadius:8,borderLeft:'2px solid var(--a)',fontSize:13,color:'var(--a)',lineHeight:1.5}}>
+                            ➜ {ins.action}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!showInsights&&(
+              <div className="card" style={{textAlign:'center',padding:20,cursor:'pointer'}} onClick={()=>setShowInsights(true)}>
+                <div style={{fontSize:24,marginBottom:6}}>💡</div>
+                <div style={{fontSize:13,color:'var(--t2)'}}>Tap Show untuk lihat insights pengeluaran bulan ini</div>
+              </div>
+            )}
+          </div>
+        </>
           {/* Pie Chart */}
           <div className="section">
             <div className="section-label">By Category</div>
@@ -1484,31 +1603,6 @@ function SpendAnalysis({txs,groups,budgets}){
             )}
           </div>
 
-          {/* Spending Insights */}
-          <div className="section">
-            <div className="fxb" style={{marginBottom:12}}>
-              <div className="section-label" style={{margin:0}}>Spending Insights ✨</div>
-              <button onClick={()=>setShowInsights(v=>!v)} style={{background:'var(--abg)',border:'.5px solid var(--a)',borderRadius:20,padding:'5px 14px',fontSize:12,color:'var(--a)',cursor:'pointer',fontFamily:'var(--fb)',fontWeight:500}}>
-                {showInsights?'Hide':'Show'}
-              </button>
-            </div>
-            {showInsights&&(
-              <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                {insights.map((ins,i)=>(
-                  <div key={i} className="card" style={{display:'flex',gap:12,alignItems:'flex-start'}}>
-                    <div style={{fontSize:20,flexShrink:0}}>{ins.icon}</div>
-                    <div style={{fontSize:14,lineHeight:1.5,color:'var(--t1)'}}>{ins.text}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {!showInsights&&(
-              <div className="card" style={{textAlign:'center',padding:20,cursor:'pointer'}} onClick={()=>setShowInsights(true)}>
-                <div style={{fontSize:24,marginBottom:6}}>💡</div>
-                <div style={{fontSize:13,color:'var(--t2)'}}>Tap Show untuk lihat insights pengeluaran bulan ini</div>
-              </div>
-            )}
-          </div>
         </>
       )}
     </div>
