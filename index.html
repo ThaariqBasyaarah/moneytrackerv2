@@ -418,6 +418,100 @@ function EditTx({tx,groups,subCats,sources,onSave,onClose}){
 }
 
 
+// ── PIE CHART ────────────────────────────────────────────────────────
+function PieChart({data,groups,total}){
+  const [showRp,setShowRp]=useState(false);
+  const [hovered,setHovered]=useState(null);
+
+  if(!total||Object.keys(data).length===0) return(
+    <div className="card" style={{textAlign:'center',padding:32,color:'var(--t3)',fontSize:13}}>No data this period</div>
+  );
+
+  // Build slices
+  const slices=[];
+  let cumAngle=0;
+  const entries=Object.entries(data).sort((a,b)=>b[1]-a[1]);
+  entries.forEach(([gid,amt])=>{
+    const g=groups.find(x=>x.id===gid);
+    const pct=amt/total;
+    const angle=pct*360;
+    slices.push({gid,amt,pct,angle,startAngle:cumAngle,color:g?.color||'#888',name:g?.name||'Other',emoji:g?.emoji||'💰'});
+    cumAngle+=angle;
+  });
+
+  // SVG arc path helper
+  const arc=(cx,cy,r,startDeg,endDeg)=>{
+    const toRad=d=>d*Math.PI/180;
+    const x1=cx+r*Math.sin(toRad(startDeg));
+    const y1=cy-r*Math.cos(toRad(startDeg));
+    const x2=cx+r*Math.sin(toRad(endDeg));
+    const y2=cy-r*Math.cos(toRad(endDeg));
+    const large=endDeg-startDeg>180?1:0;
+    return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`;
+  };
+
+  const active=hovered!=null?slices[hovered]:null;
+
+  return(
+    <div className="card">
+      <svg viewBox="0 0 200 200" width="100%" style={{maxWidth:220,display:'block',margin:'0 auto',cursor:'pointer'}}
+        onClick={()=>setShowRp(v=>!v)}>
+        {slices.map((s,i)=>{
+          const isActive=hovered===i;
+          const scale=isActive?1.04:1;
+          return(
+            <path key={s.gid}
+              d={arc(100,100,isActive?88:82,s.startAngle,s.startAngle+s.angle-(slices.length>1?1:0))}
+              fill={s.color}
+              opacity={hovered!=null&&!isActive?0.45:1}
+              style={{transition:'all .2s',cursor:'pointer'}}
+              onMouseEnter={()=>setHovered(i)}
+              onMouseLeave={()=>setHovered(null)}
+              onTouchStart={()=>setHovered(hovered===i?null:i)}
+            />
+          );
+        })}
+        {/* Center label */}
+        <circle cx="100" cy="100" r="46" fill="var(--bg2)"/>
+        {active?(
+          <>
+            <text x="100" y="93" textAnchor="middle" fontSize="18" fill="white">{active.emoji}</text>
+            <text x="100" y="108" textAnchor="middle" fontSize="9" fill="var(--t2)" fontFamily="DM Sans">{active.name}</text>
+            <text x="100" y="122" textAnchor="middle" fontSize="11" fill={active.color} fontWeight="700" fontFamily="Syne">
+              {showRp?`Rp${Math.round(active.amt/1000)}K`:`${(active.pct*100).toFixed(1)}%`}
+            </text>
+          </>
+        ):(
+          <>
+            <text x="100" y="97" textAnchor="middle" fontSize="10" fill="var(--t2)" fontFamily="DM Sans">Total</text>
+            <text x="100" y="113" textAnchor="middle" fontSize="12" fill="var(--t1)" fontWeight="700" fontFamily="Syne">
+              {showRp?`Rp${Math.round(total/1000)}K`:`${entries.length} cat`}
+            </text>
+          </>
+        )}
+      </svg>
+      {/* Tap hint */}
+      <div style={{textAlign:'center',fontSize:11,color:'var(--t3)',marginTop:4,marginBottom:8}}>
+        Tap slice for details · tap center to toggle {showRp?'%':'Rp'}
+      </div>
+      {/* Legend */}
+      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+        {slices.map((s,i)=>(
+          <div key={s.gid} style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',opacity:hovered!=null&&hovered!==i?0.45:1,transition:'opacity .2s'}}
+            onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
+            onTouchStart={()=>setHovered(hovered===i?null:i)}>
+            <div style={{width:10,height:10,borderRadius:'50%',background:s.color,flexShrink:0}}/>
+            <div style={{flex:1,fontSize:13,color:'var(--t1)'}}>{s.emoji} {s.name}</div>
+            <div style={{fontSize:13,fontFamily:'var(--fh)',fontWeight:700,color:s.color}}>
+              {showRp?idr(s.amt):`${(s.pct*100).toFixed(1)}%`}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── DASHBOARD ─────────────────────────────────────────────────────────
 function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
   const [mon,setMon]=useState(new Date().getMonth());
@@ -477,6 +571,12 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
           <div className="stat-card"><div className="stat-label">Top Category</div><div className="stat-value" style={{fontSize:13}}>{(()=>{const top=Object.entries(byG).sort((a,b)=>b[1]-a[1])[0];if(!top)return'-';const g=groups.find(x=>x.id===top[0]);return g?`${g.emoji} ${g.name}`:'-'})()}</div></div>
           <div className="stat-card"><div className="stat-label">Active Cat.</div><div className="stat-value">{Object.keys(byG).length}</div><div className="stat-sub">this month</div></div>
         </div>
+      </div>
+
+      {/* Pie Chart Section */}
+      <div className="section">
+        <div className="section-label">Spending by Category</div>
+        <PieChart data={byG} groups={groups} total={mTotal}/>
       </div>
 
       <div className="section">
