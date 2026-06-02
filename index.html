@@ -467,7 +467,7 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
         <div className="hero-label">TOTAL SPENT - {MN[mon].toUpperCase()}</div>
         <div className="hero-amt"><span className="hero-cur">Rp</span>{mTotal.toLocaleString('id-ID')}</div>
         <div className="hero-sub">{mTx.length} tx | {new Date(yr,mon-1,25).toLocaleDateString('id-ID',{day:'numeric',month:'short'})} - {new Date(yr,mon,24).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div>
-        {(()=>{const tb=budgets.filter(b=>b.type==='monthly').reduce((s,b)=>s+b.amount,0);if(!tb)return null;const pct=Math.min((mTotal/tb)*100,100);return(<><div className="bar-track"><div className="bar-fill" style={{width:`${pct}%`,background:pct>90?'#ff4d4d':pct>70?'#ffb347':'#c8f560'}}/></div><div className="bar-labels"><span>{pct.toFixed(0)}% of budget</span><span>{idr(tb)}</span></div></>)})()}
+
       </div>
 
       <div className="section">
@@ -516,9 +516,9 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
           <div className="card">
             {groups.map(g=>{
               const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
+              if(!b)return null;
               const spent=byG[g.id]||0;
-              if(!b&&!spent)return null;
-              const budget=b?.amount||0;
+              const budget=b.amount||0;
               const pct=budget?Math.min((spent/budget)*100,100):0;
               const st=!budget?'n':pct>90?'o':pct>70?'w':'s';
               return(
