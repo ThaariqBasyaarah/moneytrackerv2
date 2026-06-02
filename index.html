@@ -297,12 +297,14 @@ function Login({onLogin}){
 }
 
 // ── ADD TX MODAL ──────────────────────────────────────────────────────
-function AddTx({groups,userId,createdBy,onSave,onClose}){
+function AddTx({groups,subCats,sources,userId,createdBy,onSave,onClose}){
   const [desc,setDesc]=useState('');
   const [amt,setAmt]=useState('');
   const [gid,setGid]=useState(groups[0]?.id||'');
   const [date,setDate]=useState(tod());
   const [photo,setPhoto]=useState(null);
+  const [srcId,setSrcId]=useState('');
+  const [subCatId,setSubCatId]=useState('');
   const [cam,setCam]=useState(false);
   const [ai,setAi]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -347,7 +349,7 @@ function AddTx({groups,userId,createdBy,onSave,onClose}){
   const save=async()=>{
     if(!desc.trim()||!amt||!gid)return;
     setSaving(true);
-    const tx={id:'t'+Date.now(),user_id:userId,created_by:createdBy,description:desc.trim(),amount:parseInt(amt.replace(/\D/g,'')),group_id:gid,date,photo:photo||null};
+    const tx={id:'t'+Date.now(),user_id:userId,created_by:createdBy,description:desc.trim(),amount:parseInt(amt.replace(/\D/g,'')),group_id:gid,sub_category_id:subCatId||null,source_id:srcId||null,date,photo:photo||null};
     await onSave(tx);setSaving(false);onClose();
   };
 
@@ -395,6 +397,22 @@ function AddTx({groups,userId,createdBy,onSave,onClose}){
               {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
             </select>
           </div>
+          {subCats.filter(s=>s.group_id===gid).length>0&&(
+            <div className="fg"><label className="fl">Sub Category</label>
+              <select className="fi" value={subCatId} onChange={e=>setSubCatId(e.target.value)}>
+                <option value="">-- None --</option>
+                {subCats.filter(s=>s.group_id===gid).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
+          {sources.length>0&&(
+            <div className="fg"><label className="fl">Payment Source</label>
+              <select className="fi" value={srcId} onChange={e=>setSrcId(e.target.value)}>
+                <option value="">-- None --</option>
+                {sources.map(s=><option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
+              </select>
+            </div>
+          )}
           <div className="fg"><label className="fl">Date</label><input className="fi" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
         </div>
         <div className="modal-foot">
@@ -409,17 +427,19 @@ function AddTx({groups,userId,createdBy,onSave,onClose}){
 }
 
 // ── EDIT TX MODAL ────────────────────────────────────────────────────
-function EditTx({tx,groups,onSave,onClose}){
+function EditTx({tx,groups,subCats,sources,onSave,onClose}){
   const [desc,setDesc]=useState(tx.description);
   const [amt,setAmt]=useState(String(tx.amount));
   const [gid,setGid]=useState(tx.group_id);
   const [date,setDate]=useState(tx.date);
+  const [srcId,setSrcId]=useState(tx.source_id||'');
+  const [subCatId,setSubCatId]=useState(tx.sub_category_id||'');
   const [saving,setSaving]=useState(false);
   const parseAmt=v=>v.replace(/\./g,'').replace(/,/g,'').replace(/[^0-9]/g,'');
   const save=async()=>{
     if(!desc.trim()||!amt||!gid)return;
     setSaving(true);
-    const updated={...tx,description:desc.trim(),amount:parseInt(parseAmt(amt)),group_id:gid,date};
+    const updated={...tx,description:desc.trim(),amount:parseInt(parseAmt(amt)),group_id:gid,sub_category_id:subCatId||null,source_id:srcId||null,date};
     await onSave(updated);setSaving(false);onClose();
   };
   return(
@@ -436,6 +456,22 @@ function EditTx({tx,groups,onSave,onClose}){
               {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
             </select>
           </div>
+          {subCats.filter(s=>s.group_id===gid).length>0&&(
+            <div className="fg"><label className="fl">Sub Category</label>
+              <select className="fi" value={subCatId} onChange={e=>setSubCatId(e.target.value)}>
+                <option value="">-- None --</option>
+                {subCats.filter(s=>s.group_id===gid).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
+          {sources.length>0&&(
+            <div className="fg"><label className="fl">Payment Source</label>
+              <select className="fi" value={srcId} onChange={e=>setSrcId(e.target.value)}>
+                <option value="">-- None --</option>
+                {sources.map(s=><option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
+              </select>
+            </div>
+          )}
           <div className="fg"><label className="fl">Date</label><input className="fi" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
         </div>
         <div className="modal-foot">
@@ -652,7 +688,7 @@ function History({txs,groups,onDelete,onEdit}){
 }
 
 // ── MASTER ────────────────────────────────────────────────────────────
-function Master({groups,setGroups,budgets,setBudgets,currentUser}){
+function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,setSubCats,currentUser}){
   const [tab,setTab]=useState('groups');
   const [users,setUsers]=useState([]);
   // group form
@@ -677,9 +713,59 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
   const [uPass,setUPass]=useState('');
   const [uAv,setUAv]=useState('😊');
   const [uErr,setUErr]=useState('');
+  // source form
+  const [showSrc,setShowSrc]=useState(false);
+  const [editSrc,setEditSrc]=useState(null);
+  const [srcName,setSrcName]=useState('');
+  const [srcIcon,setSrcIcon]=useState('💳');
+  // sub category form
+  const [showSub,setShowSub]=useState(false);
+  const [editSub,setEditSub]=useState(null);
+  const [subName,setSubName]=useState('');
+  const [subGid,setSubGid]=useState('');
   const [saving,setSaving]=useState(false);
   const [toast,setToast]=useState(null);
   const showT=(msg,icon='✓')=>{setToast({msg,icon});setTimeout(()=>setToast(null),2500)};
+
+  const SOURCE_ICONS = ['💳','🏦','💵','📱','🏧','💰','🪙','🎫'];
+
+  // Sources CRUD
+  const openAddSrc=()=>{setEditSrc(null);setSrcName('');setSrcIcon('💳');setShowSrc(true)};
+  const openEditSrc=(s)=>{setEditSrc(s);setSrcName(s.name);setSrcIcon(s.icon);setShowSrc(true)};
+  const saveSrc=async()=>{
+    if(!srcName.trim())return;setSaving(true);
+    try{
+      if(editSrc){
+        const u={...editSrc,name:srcName.trim(),icon:srcIcon};
+        await db.patch('sources',editSrc.id,u);setSources(ss=>ss.map(x=>x.id===editSrc.id?u:x));showT('Source updated');
+      } else {
+        const s={id:'s'+Date.now(),name:srcName.trim(),icon:srcIcon};
+        await db.post('sources',s);setSources(ss=>[...ss,s]);showT('Source added');
+      }
+      setShowSrc(false);setEditSrc(null);setSrcName('');
+    }catch{showT('Failed','⚠️')}
+    setSaving(false);
+  };
+  const delSrc=async(id)=>{try{await db.del('sources',id);setSources(ss=>ss.filter(x=>x.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
+
+  // Sub Categories CRUD
+  const openAddSub=()=>{setEditSub(null);setSubName('');setSubGid(groups[0]?.id||'');setShowSub(true)};
+  const openEditSub=(s)=>{setEditSub(s);setSubName(s.name);setSubGid(s.group_id);setShowSub(true)};
+  const saveSub=async()=>{
+    if(!subName.trim()||!subGid)return;setSaving(true);
+    try{
+      if(editSub){
+        const u={...editSub,name:subName.trim(),group_id:subGid};
+        await db.patch('sub_categories',editSub.id,u);setSubCats(ss=>ss.map(x=>x.id===editSub.id?u:x));showT('Sub category updated');
+      } else {
+        const s={id:'sc'+Date.now(),name:subName.trim(),group_id:subGid};
+        await db.post('sub_categories',s);setSubCats(ss=>[...ss,s]);showT('Sub category added');
+      }
+      setShowSub(false);setEditSub(null);setSubName('');
+    }catch{showT('Failed','⚠️')}
+    setSaving(false);
+  };
+  const delSub=async(id)=>{try{await db.del('sub_categories',id);setSubCats(ss=>ss.filter(x=>x.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
 
   useEffect(()=>{if(tab==='users')loadUsers()},[tab]);
   const loadUsers=async()=>{try{const u=await db.get('users','select=id,username,display_name,avatar&order=created_at.asc');setUsers(u)}catch{}};
@@ -750,10 +836,10 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
     <div className="page-scroll">
       {toast&&<Toast msg={toast.msg} icon={toast.icon}/>}
       <div className="page-header"><div><div className="page-title">Master</div><div className="page-subtitle">Manage categories &amp; budgets</div></div></div>
-      <div style={{display:'flex',gap:8,padding:'0 20px',marginBottom:20}}>
-        {['groups','budgets','users'].map(t=>(
-          <button key={t} onClick={()=>setTab(t)} className={`btn ${tab===t?'':'ghost'}`} style={{flex:1,padding:10,fontSize:12}}>
-            {t==='groups'?'📂 Cat.':t==='budgets'?'💰 Budget':'👥 Users'}
+      <div style={{display:'flex',gap:6,padding:'0 20px',marginBottom:12,flexWrap:'wrap'}}>
+        {[['groups','📂 Cat.'],['sub','🏷️ Sub'],['sources','💳 Source'],['budgets','💰 Budget'],['users','👥 Users']].map(([t,label])=>(
+          <button key={t} onClick={()=>setTab(t)} className={`btn ${tab===t?'':'ghost'}`} style={{flex:'1 0 auto',padding:'9px 8px',fontSize:11}}>
+            {label}
           </button>
         ))}
       </div>
@@ -796,6 +882,51 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
             </div>
           );})}
           {budgets.length===0&&<div className="empty"><div className="empty-icon">💰</div><div>No budgets set</div></div>}
+        </div>
+      )}
+
+      {tab==='sources'&&(
+        <div className="section">
+          <button className="btn" style={{marginBottom:16}} onClick={openAddSrc}>+ Add Payment Source</button>
+          {sources.map(s=>(
+            <div key={s.id} className="card" style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
+              <div style={{width:44,height:44,borderRadius:12,background:'var(--bg3)',border:'.5px solid var(--b1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,flexShrink:0}}>{s.icon}</div>
+              <div style={{flex:1}}><div style={{fontWeight:500,fontSize:15}}>{s.name}</div></div>
+              <div style={{display:'flex',gap:4}}>
+                <button onClick={()=>openEditSrc(s)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:16,padding:4}}>✏️</button>
+                <button onClick={()=>delSrc(s.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:16,padding:4}}>🗑</button>
+              </div>
+            </div>
+          ))}
+          {sources.length===0&&<div className="empty"><div className="empty-icon">💳</div><div>No payment sources yet</div></div>}
+        </div>
+      )}
+
+      {tab==='sub'&&(
+        <div className="section">
+          <button className="btn" style={{marginBottom:16}} onClick={openAddSub}>+ Add Sub Category</button>
+          {groups.map(g=>{
+            const subs=subCats.filter(s=>s.group_id===g.id);
+            if(!subs.length)return null;
+            return(
+              <div key={g.id} style={{marginBottom:16}}>
+                <div style={{fontSize:12,fontWeight:600,color:'var(--t3)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:8,display:'flex',alignItems:'center',gap:8}}>
+                  <span>{g.emoji}</span>{g.name}
+                </div>
+                {subs.map(s=>(
+                  <div key={s.id} className="card" style={{display:'flex',alignItems:'center',gap:14,marginBottom:8,padding:'12px 16px'}}>
+                    <div style={{width:8,height:8,borderRadius:'50%',background:g.color,flexShrink:0}}/>
+                    <div style={{flex:1,fontSize:14,fontWeight:500}}>{s.name}</div>
+                    <div style={{display:'flex',gap:4}}>
+                      <button onClick={()=>openEditSub(s)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:14,padding:4}}>✏️</button>
+                      <button onClick={()=>delSub(s.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:14,padding:4}}>🗑</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+          {subCats.length===0&&<div className="empty"><div className="empty-icon">🏷️</div><div>No sub categories yet</div></div>}
         </div>
       )}
 
@@ -909,6 +1040,59 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
           </div>
         </div>
       )}
+      {/* ── MODAL: Add/Edit Source ── */}
+      {showSrc&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowSrc(false)}>
+          <div className="modal">
+            <div className="modal-body">
+              <div className="modal-title">{editSrc?'Edit Source':'Add Payment Source'}</div>
+              <div className="fg"><label className="fl">Name</label>
+                <input className="fi" placeholder="e.g. BCA, Mandiri, Cash" value={srcName} onChange={e=>setSrcName(e.target.value)}/>
+              </div>
+              <div className="fg">
+                <label className="fl">Icon</label>
+                <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                  {SOURCE_ICONS.map(ic=>(
+                    <div key={ic} onClick={()=>setSrcIcon(ic)} style={{width:44,height:44,borderRadius:10,background:srcIcon===ic?'var(--abg)':'var(--bg3)',border:`.5px solid ${srcIcon===ic?'var(--a)':'var(--b1)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,cursor:'pointer'}}>{ic}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="modal-foot">
+              <div className="btn-row">
+                <button className="btn ghost" onClick={()=>setShowSrc(false)}>Cancel</button>
+                <button className="btn" onClick={saveSrc} disabled={saving}>{saving?'Saving...':editSrc?'Update':'Add'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Add/Edit Sub Category ── */}
+      {showSub&&(
+        <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowSub(false)}>
+          <div className="modal">
+            <div className="modal-body">
+              <div className="modal-title">{editSub?'Edit Sub Category':'Add Sub Category'}</div>
+              <div className="fg"><label className="fl">Category</label>
+                <select className="fi" value={subGid} onChange={e=>setSubGid(e.target.value)}>
+                  {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
+                </select>
+              </div>
+              <div className="fg"><label className="fl">Sub Category Name</label>
+                <input className="fi" placeholder="e.g. Lunch, Dinner, Grab Food" value={subName} onChange={e=>setSubName(e.target.value)}/>
+              </div>
+            </div>
+            <div className="modal-foot">
+              <div className="btn-row">
+                <button className="btn ghost" onClick={()=>setShowSub(false)}>Cancel</button>
+                <button className="btn" onClick={saveSub} disabled={saving}>{saving?'Saving...':editSub?'Update':'Add'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -947,6 +1131,8 @@ function App(){
   const [txs,setTxs]=useState([]);
   const [groups,setGroups]=useState([]);
   const [budgets,setBudgets]=useState([]);
+  const [sources,setSources]=useState([]);
+  const [subCats,setSubCats]=useState([]);
   const [syncing,setSyncing]=useState(false);
   const [loading,setLoading]=useState(true);
   const [toast,setToast]=useState(null);
@@ -956,12 +1142,14 @@ function App(){
     if(!uid)return;
     setSyncing(true);
     try{
-      const [t,g,b]=await Promise.all([
+      const [t,g,b,s,sc]=await Promise.all([
         db.get('transactions','order=date.desc,created_at.desc&select=*'),
         db.get('groups','order=created_at.asc&select=*'),
         db.get('budgets','order=created_at.asc&select=*'),
+        db.get('sources','order=created_at.asc&select=*'),
+        db.get('sub_categories','order=created_at.asc&select=*'),
       ]);
-      setTxs(t);setGroups(g);setBudgets(b);
+      setTxs(t);setGroups(g);setBudgets(b);setSources(s);setSubCats(sc);
     }catch{showT('Sync failed','⚠️')}
     setSyncing(false);setLoading(false);
   },[]);
@@ -969,7 +1157,7 @@ function App(){
   useEffect(()=>{if(user)load(user.id);else setLoading(false)},[user]);
 
   const login=u=>{setUser(u);setTab('dash')};
-  const logout=()=>{clearSession();setUser(null);setTxs([]);setGroups([]);setBudgets([])};
+  const logout=()=>{clearSession();setUser(null);setTxs([]);setGroups([]);setBudgets([]);setSources([]);setSubCats([])};
   const addTx=async tx=>{try{await db.post('transactions',tx);setTxs(a=>[tx,...a]);showT('Saved ☁️')}catch{showT('Failed','⚠️')}};
   const delTx=async id=>{try{await db.del('transactions',id);setTxs(a=>a.filter(t=>t.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
   const updateTx=async tx=>{try{await db.patch('transactions',tx.id,tx);setTxs(a=>a.map(t=>t.id===tx.id?tx:t));showT('Updated ✓');setEditTxItem(null);}catch{showT('Failed','⚠️')}};
@@ -1007,7 +1195,7 @@ function App(){
       <div className="main-wrap">
         {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
         {tab==='hist'&&<History txs={txs} groups={groups} onDelete={delTx} onEdit={setEditTxItem}/>}
-        {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} currentUser={user}/>}
+        {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} sources={sources} setSources={setSources} subCats={subCats} setSubCats={setSubCats} currentUser={user}/>}
         {tab==='profile'&&<Profile currentUser={user} txs={txs} onRefresh={()=>load(user.id)} onLogout={logout}/>}
       </div>
 
@@ -1020,8 +1208,8 @@ function App(){
         <div className={`nav-item ${tab==='profile'?'active':''}`} onClick={()=>setTab('profile')}><Ic n="user"/><span style={{color:tab==='profile'?'var(--a)':'var(--t3)'}}>{user.displayName.split(' ')[0]}</span></div>
       </nav>
 
-      {showAdd&&<AddTx groups={groups} userId={user.id} createdBy={user.displayName} onSave={addTx} onClose={()=>setShowAdd(false)}/>}
-      {editTxItem&&<EditTx tx={editTxItem} groups={groups} onSave={updateTx} onClose={()=>setEditTxItem(null)}/>}
+      {showAdd&&<AddTx groups={groups} subCats={subCats} sources={sources} userId={user.id} createdBy={user.displayName} onSave={addTx} onClose={()=>setShowAdd(false)}/>}
+      {editTxItem&&<EditTx tx={editTxItem} groups={groups} subCats={subCats} sources={sources} onSave={updateTx} onClose={()=>setEditTxItem(null)}/>}
     </>
   );
 }
