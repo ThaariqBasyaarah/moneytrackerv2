@@ -239,6 +239,7 @@ const Ic=({n,s=22,w=1.6,c})=>{
     filt:<><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></>,
     ref:<><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></>,
     out:<><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
+    chart:<><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>,
   };
   return <svg viewBox="0 0 24 24" width={s} height={s} fill="none" strokeWidth={w} stroke={c||'currentColor'} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>{P[n]}</svg>;
 };
@@ -571,12 +572,6 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
           <div className="stat-card"><div className="stat-label">Top Category</div><div className="stat-value" style={{fontSize:13}}>{(()=>{const top=Object.entries(byG).sort((a,b)=>b[1]-a[1])[0];if(!top)return'-';const g=groups.find(x=>x.id===top[0]);return g?`${g.emoji} ${g.name}`:'-'})()}</div></div>
           <div className="stat-card"><div className="stat-label">Active Cat.</div><div className="stat-value">{Object.keys(byG).length}</div><div className="stat-sub">this month</div></div>
         </div>
-      </div>
-
-      {/* Pie Chart Section */}
-      <div className="section">
-        <div className="section-label">Spending by Category</div>
-        <PieChart data={byG} groups={groups} total={mTotal}/>
       </div>
 
       <div className="section">
@@ -1254,6 +1249,168 @@ function Profile({currentUser,txs,onRefresh,onLogout}){
   );
 }
 
+// ── SPEND ANALYSIS ───────────────────────────────────────────────────
+function SpendAnalysis({txs,groups,budgets}){
+  const [selMonth,setSelMonth]=useState(new Date().getMonth());
+  const [selYear]=useState(new Date().getFullYear());
+  const [showRp,setShowRp]=useState(false);
+  const [hovered,setHovered]=useState(null);
+
+  const mTx=useMemo(()=>{
+    const periodStart=new Date(selYear,selMonth-1,25);
+    const periodEnd=new Date(selYear,selMonth,24);
+    const s=periodStart.toISOString().split('T')[0];
+    const e=periodEnd.toISOString().split('T')[0];
+    return txs.filter(t=>t.date>=s&&t.date<=e);
+  },[txs,selMonth,selYear]);
+
+  const total=useMemo(()=>mTx.reduce((s,t)=>s+t.amount,0),[mTx]);
+
+  const byG=useMemo(()=>{
+    const m={};
+    mTx.forEach(t=>{m[t.group_id]=(m[t.group_id]||0)+t.amount});
+    return m;
+  },[mTx]);
+
+  // Pie slices
+  const slices=useMemo(()=>{
+    if(!total)return[];
+    const entries=Object.entries(byG).sort((a,b)=>b[1]-a[1]);
+    let cum=0;
+    return entries.map(([gid,amt])=>{
+      const g=groups.find(x=>x.id===gid);
+      const pct=amt/total;
+      const angle=pct*360;
+      const s={gid,amt,pct,angle,startAngle:cum,color:g?.color||'#888',name:g?.name||'Other',emoji:g?.emoji||'💰'};
+      cum+=angle;
+      return s;
+    });
+  },[byG,total,groups]);
+
+  const arc=(cx,cy,r,s,e)=>{
+    const rad=d=>d*Math.PI/180;
+    const x1=cx+r*Math.sin(rad(s)),y1=cy-r*Math.cos(rad(s));
+    const x2=cx+r*Math.sin(rad(e)),y2=cy-r*Math.cos(rad(e));
+    return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${e-s>180?1:0} 1 ${x2} ${y2} Z`;
+  };
+
+  const active=hovered!=null?slices[hovered]:null;
+
+  return(
+    <div className="page-scroll">
+      <div className="page-header">
+        <div><div className="page-title">Analysis</div><div className="page-subtitle">Spending breakdown</div></div>
+      </div>
+
+      {/* Month filter */}
+      <div className="pills">
+        {MN.map((m,i)=><div key={i} className={`chip ${selMonth===i?'on':''}`} onClick={()=>setSelMonth(i)}>{m.slice(0,3)}</div>)}
+      </div>
+
+      {/* Summary */}
+      <div className="section">
+        <div className="card" style={{marginBottom:0}}>
+          <div style={{fontSize:12,color:'var(--t2)',marginBottom:4}}>Total Spent — {MN[selMonth]}</div>
+          <div style={{fontFamily:'var(--fh)',fontSize:32,fontWeight:800,letterSpacing:'-1px'}}>{idr(total)}</div>
+          <div style={{fontSize:12,color:'var(--t3)',marginTop:4}}>{mTx.length} transactions · {new Date(selYear,selMonth-1,25).toLocaleDateString('id-ID',{day:'numeric',month:'short'})} - {new Date(selYear,selMonth,24).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</div>
+        </div>
+      </div>
+
+      {/* Pie Chart */}
+      <div className="section">
+        <div className="section-label">By Category</div>
+        {!total?(
+          <div className="card" style={{textAlign:'center',padding:32,color:'var(--t3)',fontSize:13}}>No transactions this period</div>
+        ):(
+          <div className="card">
+            <svg viewBox="0 0 200 200" width="100%" style={{maxWidth:240,display:'block',margin:'0 auto',cursor:'pointer'}}
+              onClick={()=>setShowRp(v=>!v)}>
+              {slices.map((s,i)=>(
+                <path key={s.gid}
+                  d={arc(100,100,hovered===i?88:82,s.startAngle,s.startAngle+s.angle-(slices.length>1?0.8:0))}
+                  fill={s.color}
+                  opacity={hovered!=null&&hovered!==i?0.4:1}
+                  style={{transition:'all .2s',cursor:'pointer'}}
+                  onMouseEnter={()=>setHovered(i)}
+                  onMouseLeave={()=>setHovered(null)}
+                  onTouchStart={()=>setHovered(hovered===i?null:i)}
+                />
+              ))}
+              <circle cx="100" cy="100" r="46" fill="var(--bg2)"/>
+              {active?(
+                <>
+                  <text x="100" y="91" textAnchor="middle" fontSize="20" fill="white">{active.emoji}</text>
+                  <text x="100" y="107" textAnchor="middle" fontSize="9" fill="var(--t2)" fontFamily="DM Sans">{active.name}</text>
+                  <text x="100" y="121" textAnchor="middle" fontSize="11" fill={active.color} fontWeight="700" fontFamily="Syne">
+                    {showRp?`Rp${Math.round(active.amt/1000)}K`:`${(active.pct*100).toFixed(1)}%`}
+                  </text>
+                </>
+              ):(
+                <>
+                  <text x="100" y="97" textAnchor="middle" fontSize="10" fill="var(--t2)" fontFamily="DM Sans">{showRp?"Total":"Tap slice"}</text>
+                  <text x="100" y="113" textAnchor="middle" fontSize="11" fill="var(--t1)" fontWeight="700" fontFamily="Syne">
+                    {showRp?`Rp${Math.round(total/1000)}K`:`${slices.length} cat`}
+                  </text>
+                </>
+              )}
+            </svg>
+            <div style={{textAlign:'center',fontSize:11,color:'var(--t3)',marginTop:2,marginBottom:12}}>
+              Tap slice to highlight · tap center to toggle {showRp?'%':'Rp'}
+            </div>
+            {/* Legend */}
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {slices.map((s,i)=>(
+                <div key={s.gid}
+                  style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer',opacity:hovered!=null&&hovered!==i?0.4:1,transition:'opacity .2s'}}
+                  onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}
+                  onTouchStart={()=>setHovered(hovered===i?null:i)}>
+                  <div style={{width:10,height:10,borderRadius:'50%',background:s.color,flexShrink:0}}/>
+                  <div style={{flex:1,fontSize:13}}>{s.emoji} {s.name}</div>
+                  <div style={{fontSize:13,fontFamily:'var(--fh)',fontWeight:700,color:s.color}}>{idr(s.amt)}</div>
+                  <div style={{fontSize:12,color:'var(--t3)',width:40,textAlign:'right'}}>{(s.pct*100).toFixed(1)}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Budget vs Actual */}
+      <div className="section">
+        <div className="section-label">Budget vs Actual</div>
+        <div className="card">
+          {groups.filter(g=>budgets.find(b=>b.group_id===g.id&&b.type==='monthly')).map(g=>{
+            const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
+            const spent=byG[g.id]||0;
+            const pct=Math.min((spent/b.amount)*100,100);
+            const st=pct>90?'o':pct>70?'w':'s';
+            return(
+              <div key={g.id} className="prog-wrap">
+                <div className="prog-hd">
+                  <div className="prog-name">{g.emoji} {g.name}</div>
+                  <div className="prog-right">
+                    <div className="prog-spent">{idr(spent)}</div>
+                    <div className="prog-bud">of {idr(b.amount)}</div>
+                  </div>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div className="prog-track" style={{flex:1}}>
+                    <div className="prog-fill" style={{width:`${pct}%`,background:st==='o'?'#ff4d4d':st==='w'?'#ffb347':g.color}}/>
+                  </div>
+                  <span style={{fontSize:11,fontWeight:600,color:st==='o'?'#ff4d4d':st==='w'?'#ffb347':'var(--a)',width:34,textAlign:'right',flexShrink:0}}>{pct.toFixed(0)}%</span>
+                </div>
+                {st==='o'&&<div style={{fontSize:11,color:'#ff4d4d',marginTop:2}}>Over budget!</div>}
+              </div>
+            );
+          })}
+          {groups.filter(g=>budgets.find(b=>b.group_id===g.id&&b.type==='monthly')).length===0&&
+            <div style={{textAlign:'center',padding:20,color:'var(--t3)',fontSize:13}}>No budgets set yet</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────────────────
 function App(){
   const [user,setUser]=useState(()=>getSession());
@@ -1300,6 +1457,7 @@ function App(){
   const NAV=[
     {id:'dash',icon:'home',label:'Overview'},
     {id:'hist',icon:'hist',label:'History'},
+    {id:'analysis',icon:'chart',label:'Analysis'},
     {id:'master',icon:'tag',label:'Master'},
     {id:'profile',icon:'user',label:user.displayName.split(' ')[0]},
   ];
@@ -1327,6 +1485,7 @@ function App(){
       <div className="main-wrap">
         {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
         {tab==='hist'&&<History txs={txs} groups={groups} onDelete={delTx} onEdit={setEditTxItem}/>}
+        {tab==='analysis'&&<SpendAnalysis txs={txs} groups={groups} budgets={budgets}/>}
         {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} sources={sources} setSources={setSources} subCats={subCats} setSubCats={setSubCats} currentUser={user}/>}
         {tab==='profile'&&<Profile currentUser={user} txs={txs} onRefresh={()=>load(user.id)} onLogout={logout}/>}
       </div>
@@ -1336,8 +1495,8 @@ function App(){
         <div className={`nav-item ${tab==='dash'?'active':''}`} onClick={()=>setTab('dash')}><Ic n="home"/><span>Overview</span></div>
         <div className={`nav-item ${tab==='hist'?'active':''}`} onClick={()=>setTab('hist')}><Ic n="hist"/><span>History</span></div>
         <div className="nav-fab" onClick={()=>setShowAdd(true)}><Ic n="plus"/></div>
+        <div className={`nav-item ${tab==='analysis'?'active':''}`} onClick={()=>setTab('analysis')}><Ic n="chart"/><span>Analysis</span></div>
         <div className={`nav-item ${tab==='master'?'active':''}`} onClick={()=>setTab('master')}><Ic n="tag"/><span>Master</span></div>
-        <div className={`nav-item ${tab==='profile'?'active':''}`} onClick={()=>setTab('profile')}><Ic n="user"/><span style={{color:tab==='profile'?'var(--a)':'var(--t3)'}}>{user.displayName.split(' ')[0]}</span></div>
       </nav>
 
       {showAdd&&<AddTx groups={groups} subCats={subCats} sources={sources} userId={user.id} createdBy={user.displayName} onSave={addTx} onClose={()=>setShowAdd(false)}/>}
