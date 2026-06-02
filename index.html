@@ -302,54 +302,15 @@ function AddTx({groups,subCats,sources,userId,createdBy,onSave,onClose}){
   const [amt,setAmt]=useState('');
   const [gid,setGid]=useState(groups[0]?.id||'');
   const [date,setDate]=useState(tod());
-  const [photo,setPhoto]=useState(null);
   const [srcId,setSrcId]=useState('');
   const [subCatId,setSubCatId]=useState('');
-  const [cam,setCam]=useState(false);
-  const [ai,setAi]=useState(false);
   const [saving,setSaving]=useState(false);
-  const vidRef=useRef(null);
+  const parseAmt=v=>v.replace(/\./g,'').replace(/,/g,'').replace(/[^0-9]/g,'');
 
-  const fmtAmt = (val) => {
-    const num = val.replace(/\D/g,'');
-    return num ? parseInt(num).toLocaleString('id-ID') : '';
-  };
-  const parseAmt = (val) => val.replace(/\./g,'').replace(/,/g,'').replace(/\D/g,'');
-  const streamRef=useRef(null);
-  const fileRef=useRef(null);
-
-  const startCam=async()=>{
-    try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});streamRef.current=s;if(vidRef.current)vidRef.current.srcObject=s;setCam(true);}
-    catch{fileRef.current?.click()}
-  };
-  const stopCam=()=>{streamRef.current?.getTracks().forEach(t=>t.stop());streamRef.current=null;setCam(false)};
-  const snap=()=>{
-    if(!vidRef.current)return;
-    const c=document.createElement('canvas');c.width=vidRef.current.videoWidth;c.height=vidRef.current.videoHeight;
-    c.getContext('2d').drawImage(vidRef.current,0,0);
-    const d=c.toDataURL('image/jpeg',.7);setPhoto(d);stopCam();analyze(d);
-  };
-  const onFile=e=>{
-    const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();r.onload=ev=>{setPhoto(ev.target.result);analyze(ev.target.result)};r.readAsDataURL(f);
-  };
-  const analyze=async(dataUrl)=>{
-    setAi(true);
-    try{
-      const b64=dataUrl.split(',')[1];
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:200,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'Receipt/struk. Extract: 1) name max 30 chars, 2) total IDR number only. JSON only: {"desc":"...","amount":0}'}]}]})});
-      const d=await res.json();
-      const txt=d.content?.map(c=>c.text||'').join('');
-      const parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
-      if(parsed.desc)setDesc(parsed.desc);
-      if(parsed.amount>0)setAmt(String(parsed.amount));
-    }catch{}
-    setAi(false);
-  };
   const save=async()=>{
     if(!desc.trim()||!amt||!gid)return;
     setSaving(true);
-    const tx={id:'t'+Date.now(),user_id:userId,created_by:createdBy,description:desc.trim(),amount:parseInt(amt.replace(/\D/g,'')),group_id:gid,sub_category_id:subCatId||null,source_id:srcId||null,date,photo:photo||null};
+    const tx={id:'t'+Date.now(),user_id:userId,created_by:createdBy,description:desc.trim(),amount:parseInt(parseAmt(amt)),group_id:gid,sub_category_id:subCatId||null,source_id:srcId||null,date,photo:null};
     await onSave(tx);setSaving(false);onClose();
   };
 
@@ -357,37 +318,7 @@ function AddTx({groups,subCats,sources,userId,createdBy,onSave,onClose}){
     <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
         <div className="modal-body">
-          <div className="modal-handle"/>
           <div className="modal-title">Add Transaction</div>
-          {!photo?(
-            cam?(
-              <div style={{marginBottom:18}}>
-                <div style={{width:'100%',aspectRatio:'4/3',borderRadius:'var(--r)',overflow:'hidden',position:'relative',background:'#000'}}>
-                  <video ref={vidRef} autoPlay playsInline style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}}/>
-                </div>
-                <div style={{display:'flex',gap:8,marginTop:8}}>
-                  <button className="btn ghost" onClick={stopCam}>Cancel</button>
-                  <button className="btn" onClick={snap}>📸 Capture</button>
-                </div>
-              </div>
-            ):(
-              <div style={{marginBottom:18}}>
-                <div className="camera-zone" onClick={startCam}>
-                  <span style={{fontSize:24}}>📷</span>
-                  <span style={{fontSize:13,color:'var(--t2)'}}>Tap to scan receipt</span>
-                </div>
-                <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
-                <button className="btn ghost" style={{marginTop:8}} onClick={()=>fileRef.current?.click()}>📁 Upload from Gallery</button>
-              </div>
-            )
-          ):(
-            <div className="photo-wrap" style={{marginBottom:18}}>
-              <img src={photo} alt="receipt"/>
-              <button className="photo-rm" onClick={()=>setPhoto(null)}>✕</button>
-              {ai&&<div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.6)',borderRadius:'var(--r)',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8}}><div style={{fontSize:24,color:'var(--a)'}}>✨</div><div style={{color:'white',fontSize:13}}>AI reading receipt...</div></div>}
-            </div>
-          )}
-          {ai&&<div style={{background:'var(--bluebg)',border:'.5px solid rgba(77,159,255,.2)',borderRadius:8,padding:'8px 12px',fontSize:12,color:'var(--blue)',marginBottom:14}}>🤖 Analyzing receipt...</div>}
           <div className="fg"><label className="fl">Description</label><input className="fi" placeholder="e.g. Lunch at warung" value={desc} onChange={e=>setDesc(e.target.value)}/></div>
           <div className="fg"><label className="fl">Amount (IDR)</label>
             <input className="fi" inputMode="numeric" placeholder="0" value={amt?parseInt(parseAmt(amt)||0).toLocaleString('id-ID'):''} onChange={e=>setAmt(parseAmt(e.target.value))}/>
@@ -425,6 +356,7 @@ function AddTx({groups,subCats,sources,userId,createdBy,onSave,onClose}){
     </div>
   );
 }
+
 
 // ── EDIT TX MODAL ────────────────────────────────────────────────────
 function EditTx({tx,groups,subCats,sources,onSave,onClose}){
@@ -1045,8 +977,14 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
                   {['weekly','monthly'].map(tp=><button key={tp} onClick={()=>setBType(tp)} className={`btn ${bType===tp?'':'ghost'}`} style={{flex:1,padding:10,fontSize:13}}>{tp==='weekly'?'📅 Weekly':'📆 Monthly'}</button>)}
                 </div>
               </div>
-              <div className="fg"><label className="fl">From</label><input className="fi" type="date" value={bFrom} onChange={e=>setBFrom(e.target.value)}/></div>
-              <div className="fg"><label className="fl">To</label><input className="fi" type="date" value={bTo} onChange={e=>setBTo(e.target.value)}/></div>
+              <div className="fg">
+                <label className="fl">Period</label>
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <input className="fi" type="date" value={bFrom} onChange={e=>setBFrom(e.target.value)} style={{flex:1,padding:'10px 10px',fontSize:13}}/>
+                  <span style={{color:'var(--t3)',fontSize:12,flexShrink:0}}>-</span>
+                  <input className="fi" type="date" value={bTo} onChange={e=>setBTo(e.target.value)} style={{flex:1,padding:'10px 10px',fontSize:13}}/>
+                </div>
+              </div>
             </div>
             <div className="modal-foot">
               <div className="btn-row">
