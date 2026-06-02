@@ -132,7 +132,7 @@
     .btn-row{display:flex;gap:10px}
     .btn-row .btn{flex:1}
 
-    /* MODAL — centered popup */
+    /* MODAL centered popup */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
     .modal{
       width:100%;max-width:420px;
@@ -287,7 +287,7 @@ function Login({onLogin}){
             <button onClick={()=>setShow(v=>!v)} style={{position:'absolute',right:14,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:16,padding:4}}>{show?'🙈':'👁️'}</button>
           </div>
         </div>
-        <button className="btn" onClick={go} disabled={loading}>{loading?'Signing in...':'Sign In →'}</button>
+        <button className="btn" onClick={go} disabled={loading}>{loading?'Signing in...':'Sign In ->'}</button>
       </div>
       <div style={{textAlign:'center',marginTop:16,fontSize:12,color:'var(--t3)'}}>
         <span className="sync-dot on"/>Cloud synced
@@ -540,9 +540,9 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
       </div>
 
       <div className="hero-card fade">
-        <div className="hero-label">TOTAL SPENT — {MN[mon].toUpperCase()}</div>
+        <div className="hero-label">TOTAL SPENT - {MN[mon].toUpperCase()}</div>
         <div className="hero-amt"><span className="hero-cur">Rp</span>{mTotal.toLocaleString('id-ID')}</div>
-        <div className="hero-sub">{mTx.length} tx · {new Date(yr,mon-1,25).toLocaleDateString('id-ID',{day:'numeric',month:'short'})} – {new Date(yr,mon,24).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div>
+        <div className="hero-sub">{mTx.length} tx | {new Date(yr,mon-1,25).toLocaleDateString('id-ID',{day:'numeric',month:'short'})} - {new Date(yr,mon,24).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div>
         {(()=>{const tb=budgets.filter(b=>b.type==='monthly').reduce((s,b)=>s+b.amount,0);if(!tb)return null;const pct=Math.min((mTotal/tb)*100,100);return(<><div className="bar-track"><div className="bar-fill" style={{width:`${pct}%`,background:pct>90?'#ff4d4d':pct>70?'#ffb347':'#c8f560'}}/></div><div className="bar-labels"><span>{pct.toFixed(0)}% of budget</span><span>{idr(tb)}</span></div></>)})()}
       </div>
 
@@ -550,7 +550,7 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
         <div className="stats-grid">
           <div className="stat-card"><div className="stat-label">This Week</div><div className="stat-value ac">Rp {Math.round(wTotal/1000)}K</div><div className="stat-sub">{wTx.length} tx</div></div>
           <div className="stat-card"><div className="stat-label">Avg/Day</div><div className="stat-value">Rp {Math.round(mTotal/30/1000)}K</div><div className="stat-sub">this month</div></div>
-          <div className="stat-card"><div className="stat-label">Top Category</div><div className="stat-value" style={{fontSize:13}}>{(()=>{const top=Object.entries(byG).sort((a,b)=>b[1]-a[1])[0];if(!top)return'—';const g=groups.find(x=>x.id===top[0]);return g?`${g.emoji} ${g.name}`:'—'})()}</div></div>
+          <div className="stat-card"><div className="stat-label">Top Category</div><div className="stat-value" style={{fontSize:13}}>{(()=>{const top=Object.entries(byG).sort((a,b)=>b[1]-a[1])[0];if(!top)return'-';const g=groups.find(x=>x.id===top[0]);return g?`${g.emoji} ${g.name}`:'-'})()}</div></div>
           <div className="stat-card"><div className="stat-label">Active Cat.</div><div className="stat-value">{Object.keys(byG).length}</div><div className="stat-sub">this month</div></div>
         </div>
       </div>
@@ -632,7 +632,7 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
             recent.map(t=>{const g=groups.find(x=>x.id===t.group_id);return(
               <div key={t.id} className="tx-item">
                 <div className="tx-icon" style={{background:`${g?.color||'#888'}20`}}>{g?.emoji||'💰'}</div>
-                <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} · {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}{t.created_by?' · '+t.created_by:''}</div></div>
+                <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} - {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}{t.created_by?' by '+t.created_by:''}</div></div>
                 {t.photo&&<img src={t.photo} alt="" className="tx-thumb"/>}
                 <div style={{textAlign:'right'}}>
                   <div className="tx-amt">-{idr(t.amount)}</div>
@@ -664,7 +664,7 @@ function History({txs,groups,onDelete,onEdit}){
   return(
     <div className="page-scroll">
       <div className="page-header">
-        <div><div className="page-title">History</div><div className="page-subtitle">{list.length} records · {idr(list.reduce((s,t)=>s+t.amount,0))}</div></div>
+        <div><div className="page-title">History</div><div className="page-subtitle">{list.length} records | {idr(list.reduce((s,t)=>s+t.amount,0))}</div></div>
         <div className="icon-btn" onClick={()=>setDir(d=>d==='desc'?'asc':'desc')}><Ic n="filt" s={18}/></div>
       </div>
       <div style={{padding:'0 20px',marginBottom:12}}><input className="fi" placeholder="🔍  Search..." value={q} onChange={e=>setQ(e.target.value)}/></div>
@@ -678,7 +678,7 @@ function History({txs,groups,onDelete,onEdit}){
             {list.map(t=>{const g=groups.find(x=>x.id===t.group_id);return(
               <div key={t.id} className="tx-item">
                 <div className="tx-icon" style={{background:`${g?.color||'#888'}20`}}>{g?.emoji||'💰'}</div>
-                <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} · {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}{t.created_by?' · by '+t.created_by:''}</div></div>
+                <div className="tx-info"><div className="tx-name">{t.description}</div><div className="tx-meta">{g?.name} - {new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}{t.created_by?' by '+t.created_by:''}</div></div>
                 {t.photo&&<img src={t.photo} alt="" className="tx-thumb"/>}
                 <div style={{textAlign:'right'}}>
                   <div className="tx-amt">-{idr(t.amount)}</div>
@@ -827,7 +827,7 @@ function Master({groups,setGroups,budgets,setBudgets,currentUser}){
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                 <div style={{display:'flex',alignItems:'center',gap:10}}>
                   <span style={{fontSize:20}}>{g?.emoji||'💰'}</span>
-                  <div><div style={{fontWeight:500,fontSize:14}}>{g?.name||'Unknown'}</div><div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{b.type==='weekly'?'Weekly':'Monthly'} · {b.date_from} → {b.date_to}</div></div>
+                  <div><div style={{fontWeight:500,fontSize:14}}>{g?.name||'Unknown'}</div><div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{b.type==='weekly'?'Weekly':'Monthly'} | {b.date_from} - {b.date_to}</div></div>
                 </div>
                 <div style={{textAlign:'right'}}>
                   <div style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,color:'var(--a)'}}>{idr(b.amount)}</div>
