@@ -450,50 +450,6 @@ function EditTx({tx,groups,onSave,onClose}){
 }
 
 
-// ── EDIT TX MODAL ─────────────────────────────────────────────────────
-function EditTx({tx,groups,onSave,onClose}){
-  const [desc,setDesc]=useState(tx.description);
-  const [amt,setAmt]=useState(String(tx.amount));
-  const [gid,setGid]=useState(tx.group_id);
-  const [date,setDate]=useState(tx.date);
-  const [saving,setSaving]=useState(false);
-  const parseAmt=v=>v.replace(/\./g,'').replace(/,/g,'').replace(/\D/g,'');
-
-  const save=async()=>{
-    if(!desc.trim()||!amt||!gid)return;
-    setSaving(true);
-    const updated={...tx,description:desc.trim(),amount:parseInt(parseAmt(amt)),group_id:gid,date};
-    await onSave(updated);
-    setSaving(false);onClose();
-  };
-
-  return(
-    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
-        <div className="modal-body">
-          <div className="modal-title">Edit Transaction</div>
-          <div className="fg"><label className="fl">Description</label><input className="fi" value={desc} onChange={e=>setDesc(e.target.value)}/></div>
-          <div className="fg"><label className="fl">Amount (IDR)</label>
-            <input className="fi" inputMode="numeric" value={amt?parseInt(parseAmt(amt)||0).toLocaleString('id-ID'):''} onChange={e=>setAmt(parseAmt(e.target.value))}/>
-          </div>
-          <div className="fg"><label className="fl">Category</label>
-            <select className="fi" value={gid} onChange={e=>setGid(e.target.value)}>
-              {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
-            </select>
-          </div>
-          <div className="fg"><label className="fl">Date</label><input className="fi" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
-        </div>
-        <div className="modal-foot">
-          <div className="btn-row">
-            <button className="btn ghost" onClick={onClose}>Cancel</button>
-            <button className="btn" onClick={save} disabled={!desc||!amt||!gid||saving}>{saving?'Saving...':'Update'}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── DASHBOARD ─────────────────────────────────────────────────────────
 function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
   const [mon,setMon]=useState(new Date().getMonth());
