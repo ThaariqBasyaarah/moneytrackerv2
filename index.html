@@ -1255,8 +1255,7 @@ function SpendAnalysis({txs,groups,budgets}){
   const [selYear]=useState(new Date().getFullYear());
   const [showRp,setShowRp]=useState(false);
   const [hovered,setHovered]=useState(null);
-  const [aiLoading,setAiLoading]=useState(false);
-  const [aiInsights,setAiInsights]=useState(null);
+  const [showInsights,setShowInsights]=useState(false);
 
   const mTx=useMemo(()=>{
     const s=new Date(selYear,selMonth-1,25).toISOString().split('T')[0];
@@ -1308,21 +1307,39 @@ function SpendAnalysis({txs,groups,budgets}){
 
   const active=hovered!=null?slices[hovered]:null;
 
-  const loadInsights=async()=>{
-    if(!mTx.length)return;
-    setAiLoading(true);setAiInsights(null);
-    try{
-      const summary=top5.map(s=>`${s.name}: ${idr(s.amt)} (${(s.pct*100).toFixed(0)}%)`).join(', ');
-      const recur=recurring.slice(0,3).map(r=>`"${r.desc}" ${r.count}x = ${idr(r.total)}`).join(', ');
-      const prompt=`Spending data for ${MN[selMonth]}: Total ${idr(total)}, ${mTx.length} transactions. Top categories: ${summary}. ${recur?'Recurring: '+recur:''}. Give 3 short spending insights in Indonesian (each max 1 sentence, practical advice). Format as JSON array of strings: ["insight1","insight2","insight3"]`;
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:prompt}]})});
-      const data=await res.json();
-      const txt=data.content?.map(x=>x.text||'').join('');
-      const parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
-      setAiInsights(parsed);
-    }catch{setAiInsights(['Gagal memuat insights. Coba lagi.'])}
-    setAiLoading(false);
-  };
+  // Rule-based insights dari data
+  const insights=useMemo(()=>{
+    if(!mTx.length||!total)return[];
+    const list=[];
+    // 1. Top category dominance
+    if(slices.length>0){
+      const top=slices[0];
+      if(top.pct>0.5) list.push({icon:'⚠️',text:`${top.emoji} ${top.name} menghabiskan ${(top.pct*100).toFixed(0)}% dari total pengeluaran bulan ini. Pertimbangkan untuk mengurangi.`});
+      else list.push({icon:'📊',text:`Pengeluaran terbesar di ${top.emoji} ${top.name} sebesar ${idr(top.amt)} (${(top.pct*100).toFixed(0)}% dari total).`});
+    }
+    // 2. Budget check
+    const overBudget=groups.filter(g=>{
+      const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
+      if(!b)return false;
+      return(byG[g.id]||0)>b.amount;
+    });
+    if(overBudget.length>0) list.push({icon:'🚨',text:`${overBudget.map(g=>g.name).join(', ')} sudah melebihi budget bulan ini!`});
+    else if(budgets.length>0) list.push({icon:'✅',text:`Semua kategori masih dalam batas budget. Kerja bagus!`});
+    // 3. Recurring
+    if(recurring.length>0){
+      const top=recurring[0];
+      list.push({icon:'🔄',text:`"${top.desc}" muncul ${top.count}x dengan total ${idr(top.total)}. Ini pengeluaran rutin terbesar kamu.`});
+    }
+    // 4. Daily average
+    const avgDay=Math.round(total/30);
+    list.push({icon:'📅',text:`Rata-rata pengeluaran harian bulan ini ${idr(avgDay)}. ${avgDay>200000?'Lumayan tinggi, coba pantau lebih ketat.':'Masih terkendali.'}`});
+    // 5. Transaction count insight
+    if(mTx.length>0){
+      const avgAmt=Math.round(total/mTx.length);
+      list.push({icon:'💡',text:`Rata-rata per transaksi ${idr(avgAmt)} dari ${mTx.length} transaksi. ${mTx.length>50?'Transaksi cukup banyak, pertimbangkan cek lebih sering.':'Frekuensi transaksi normal.'}`});
+    }
+    return list.slice(0,4);
+  },[mTx,total,slices,byG,budgets,groups,recurring]);
 
   return(
     <div className="page-scroll">
@@ -1467,34 +1484,28 @@ function SpendAnalysis({txs,groups,budgets}){
             )}
           </div>
 
-          {/* AI Spending Insights */}
+          {/* Spending Insights */}
           <div className="section">
             <div className="fxb" style={{marginBottom:12}}>
               <div className="section-label" style={{margin:0}}>Spending Insights ✨</div>
-              <button onClick={loadInsights} disabled={aiLoading} style={{background:'var(--abg)',border:'.5px solid var(--a)',borderRadius:20,padding:'5px 14px',fontSize:12,color:'var(--a)',cursor:'pointer',fontFamily:'var(--fb)',fontWeight:500}}>
-                {aiLoading?'Analyzing...':'Generate'}
+              <button onClick={()=>setShowInsights(v=>!v)} style={{background:'var(--abg)',border:'.5px solid var(--a)',borderRadius:20,padding:'5px 14px',fontSize:12,color:'var(--a)',cursor:'pointer',fontFamily:'var(--fb)',fontWeight:500}}>
+                {showInsights?'Hide':'Show'}
               </button>
             </div>
-            {aiLoading&&(
-              <div className="card" style={{textAlign:'center',padding:24}}>
-                <div style={{fontSize:24,marginBottom:8}}>🤖</div>
-                <div style={{fontSize:13,color:'var(--t2)'}}>AI is analyzing your spending...</div>
-              </div>
-            )}
-            {aiInsights&&!aiLoading&&(
+            {showInsights&&(
               <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                {aiInsights.map((ins,i)=>(
+                {insights.map((ins,i)=>(
                   <div key={i} className="card" style={{display:'flex',gap:12,alignItems:'flex-start'}}>
-                    <div style={{fontSize:20,flexShrink:0}}>{'💡⚠️📊'.split('')[i]||'💡'}</div>
-                    <div style={{fontSize:14,lineHeight:1.5,color:'var(--t1)'}}>{ins}</div>
+                    <div style={{fontSize:20,flexShrink:0}}>{ins.icon}</div>
+                    <div style={{fontSize:14,lineHeight:1.5,color:'var(--t1)'}}>{ins.text}</div>
                   </div>
                 ))}
               </div>
             )}
-            {!aiInsights&&!aiLoading&&(
-              <div className="card" style={{textAlign:'center',padding:24,color:'var(--t3)'}}>
-                <div style={{fontSize:24,marginBottom:8}}>🤖</div>
-                <div style={{fontSize:13}}>Tap Generate untuk analisis AI spending bulan ini</div>
+            {!showInsights&&(
+              <div className="card" style={{textAlign:'center',padding:20,cursor:'pointer'}} onClick={()=>setShowInsights(true)}>
+                <div style={{fontSize:24,marginBottom:6}}>💡</div>
+                <div style={{fontSize:13,color:'var(--t2)'}}>Tap Show untuk lihat insights pengeluaran bulan ini</div>
               </div>
             )}
           </div>
