@@ -723,6 +723,9 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
   const [editSub,setEditSub]=useState(null);
   const [subName,setSubName]=useState('');
   const [subGid,setSubGid]=useState('');
+  // sub cats inside category modal
+  const [gSubInput,setGSubInput]=useState('');
+  const [gSubList,setGSubList]=useState([]);
   const [saving,setSaving]=useState(false);
   const [toast,setToast]=useState(null);
   const showT=(msg,icon='✓')=>{setToast({msg,icon});setTimeout(()=>setToast(null),2500)};
@@ -771,19 +774,39 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
   useEffect(()=>{if(tab==='users')loadUsers()},[tab]);
   const loadUsers=async()=>{try{const u=await db.get('users','select=id,username,display_name,avatar&order=created_at.asc');setUsers(u)}catch{}};
 
-  const openAddGrp=()=>{setEditGrp(null);setGName('');setGEmoji('🏠');setGColor(COLORS[0]);setShowGrp(true)};
-  const openEditGrpFn=(g)=>{setEditGrp(g);setGName(g.name);setGEmoji(g.emoji);setGColor(g.color);setShowGrp(true)};
+  const openAddGrp=()=>{setEditGrp(null);setGName('');setGEmoji('🏠');setGColor(COLORS[0]);setGSubList([]);setGSubInput('');setShowGrp(true)};
+  const openEditGrpFn=(g)=>{
+    setEditGrp(g);setGName(g.name);setGEmoji(g.emoji);setGColor(g.color);
+    setGSubList(subCats.filter(s=>s.group_id===g.id));
+    setGSubInput('');setShowGrp(true);
+  };
   const addGrp=async()=>{
     if(!gName.trim())return;setSaving(true);
     try{
+      let gId;
       if(editGrp){
         const upd={...editGrp,name:gName.trim(),emoji:gEmoji,color:gColor};
-        await db.patch('groups',editGrp.id,upd);setGroups(gs=>gs.map(x=>x.id===editGrp.id?upd:x));showT('Category updated');
+        await db.patch('groups',editGrp.id,upd);setGroups(gs=>gs.map(x=>x.id===editGrp.id?upd:x));
+        gId=editGrp.id;showT('Category updated');
       } else {
         const g={id:'g'+Date.now(),user_id:currentUser.id,name:gName.trim(),emoji:gEmoji,color:gColor};
-        await db.post('groups',g);setGroups(gs=>[...gs,g]);showT('Category added');
+        await db.post('groups',g);setGroups(gs=>[...gs,g]);
+        gId=g.id;showT('Category added');
       }
-      setGName('');setShowGrp(false);setEditGrp(null);
+      // save new sub cats (ones without id yet)
+      const newSubs=gSubList.filter(s=>s._new);
+      for(const s of newSubs){
+        const sub={id:'sc'+Date.now()+Math.random().toString(36).slice(2),name:s.name,group_id:gId};
+        await db.post('sub_categories',sub);
+        setSubCats(ss=>[...ss,sub]);
+      }
+      // delete removed subs (ones marked _del)
+      const delSubs=gSubList.filter(s=>s._del&&!s._new);
+      for(const s of delSubs){
+        await db.del('sub_categories',s.id);
+        setSubCats(ss=>ss.filter(x=>x.id!==s.id));
+      }
+      setGName('');setShowGrp(false);setEditGrp(null);setGSubList([]);setGSubInput('');
     }catch{showT('Failed','⚠️')}
     setSaving(false);
   };
@@ -962,8 +985,27 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
               <div className="fg">
                 <label className="fl">Color</label>
                 <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                  {COLORS.map(c=><div key={c} onClick={()=>setGColor(c)} style={{width:32,height:32,borderRadius:'50%',background:c,border:`2px solid ${gColor===c?'white':'transparent'}`,cursor:'pointer'}}/>)}
+                  {COLORS.map(cl=><div key={cl} onClick={()=>setGColor(cl)} style={{width:32,height:32,borderRadius:'50%',background:cl,border:`2px solid ${gColor===cl?'white':'transparent'}`,cursor:'pointer'}}/>)}
                 </div>
+              </div>
+              <div className="fg">
+                <label className="fl">Sub Categories</label>
+                <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:8,minHeight:8}}>
+                  {gSubList.filter(s=>!s._del).map((s,i)=>(
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:4,background:'var(--bg3)',border:'.5px solid var(--b2)',borderRadius:20,padding:'5px 10px',fontSize:12}}>
+                      <span>{s.name}</span>
+                      <button onClick={()=>setGSubList(l=>l.map((x,j)=>j===i?{...x,_del:true}:x))} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:13,padding:'0 0 0 4px',lineHeight:1}}>x</button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <input className="fi" placeholder="e.g. Lunch, Kopi..." value={gSubInput} onChange={e=>setGSubInput(e.target.value)}
+                    onKeyDown={e=>{if(e.key==='Enter'&&gSubInput.trim()){setGSubList(l=>[...l,{name:gSubInput.trim(),_new:true}]);setGSubInput('');}}}
+                    style={{flex:1}}/>
+                  <button onClick={()=>{if(gSubInput.trim()){setGSubList(l=>[...l,{name:gSubInput.trim(),_new:true}]);setGSubInput('');}}}
+                    className="btn" style={{width:'auto',padding:'0 16px',fontSize:14,flexShrink:0}}>+</button>
+                </div>
+                <div style={{fontSize:11,color:'var(--t3)',marginTop:4}}>Press Enter or + to add</div>
               </div>
             </div>
             <div className="modal-foot">
@@ -976,6 +1018,7 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
         </div>
       )}
 
+      
       {/* ── MODAL: Set Budget ── */}
       {showBud&&(
         <div className="overlay" onClick={e=>e.target===e.currentTarget&&setShowBud(false)}>
