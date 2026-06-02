@@ -750,6 +750,7 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
 
   // Sub Categories CRUD
   const openAddSub=()=>{setEditSub(null);setSubName('');setSubGid(groups[0]?.id||'');setShowSub(true)};
+  const openAddSubForGroup=(gid)=>{setEditSub(null);setSubName('');setSubGid(gid);setShowSub(true)};
   const openEditSub=(s)=>{setEditSub(s);setSubName(s.name);setSubGid(s.group_id);setShowSub(true)};
   const saveSub=async()=>{
     if(!subName.trim()||!subGid)return;setSaving(true);
@@ -791,7 +792,7 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
   const saveBud=async()=>{
     if(!bGid||!bAmt)return;setSaving(true);
     try{
-      const e={id:editBud?.id||'b'+Date.now(),user_id:currentUser.id,group_id:bGid,amount:parseInt(bAmt.replace(/\D/g,'')),type:bType,date_from:bFrom,date_to:bTo};
+      const e={id:editBud?.id||'b'+Date.now(),user_id:currentUser.id,group_id:bGid,amount:parseInt(bAmt.replace(/[^0-9]/g,'')||'0'),type:bType,date_from:bFrom,date_to:bTo};
       if(editBud){await db.patch('budgets',editBud.id,e);setBudgets(bs=>bs.map(b=>b.id===editBud.id?e:b))}
       else{await db.post('budgets',e);setBudgets(bs=>[...bs,e])}
       setShowBud(false);setEditBud(null);setBAmt('');setBGid('');showT('Budget saved');
@@ -837,7 +838,7 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
       {toast&&<Toast msg={toast.msg} icon={toast.icon}/>}
       <div className="page-header"><div><div className="page-title">Master</div><div className="page-subtitle">Manage categories &amp; budgets</div></div></div>
       <div style={{display:'flex',gap:6,padding:'0 20px',marginBottom:12,flexWrap:'wrap'}}>
-        {[['groups','📂 Cat.'],['sub','🏷️ Sub'],['sources','💳 Source'],['budgets','💰 Budget'],['users','👥 Users']].map(([t,label])=>(
+        {[['groups','📂 Cat.'],['sources','💳 Source'],['budgets','💰 Budget'],['users','👥 Users']].map(([t,label])=>(
           <button key={t} onClick={()=>setTab(t)} className={`btn ${tab===t?'':'ghost'}`} style={{flex:'1 0 auto',padding:'9px 8px',fontSize:11}}>
             {label}
           </button>
@@ -847,16 +848,38 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
       {tab==='groups'&&(
         <div className="section">
           <button className="btn" style={{marginBottom:16}} onClick={openAddGrp}>+ Add Category</button>
-          {groups.map(g=>(
-            <div key={g.id} className="card" style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
-              <div style={{width:44,height:44,borderRadius:12,background:`${g.color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{g.emoji}</div>
-              <div style={{flex:1}}><div style={{fontWeight:500,fontSize:15}}>{g.name}</div><div style={{width:60,height:4,borderRadius:2,background:g.color,marginTop:6}}/></div>
-              <div style={{display:'flex',gap:4}}>
-                <button onClick={()=>openEditGrpFn(g)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:16,padding:4}}>✏️</button>
-                <button onClick={()=>delGrp(g.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:16,padding:4}}>🗑</button>
+          {groups.map(g=>{
+            const subs=subCats.filter(s=>s.group_id===g.id);
+            return(
+              <div key={g.id} className="card" style={{marginBottom:10}}>
+                <div style={{display:'flex',alignItems:'center',gap:14}}>
+                  <div style={{width:44,height:44,borderRadius:12,background:`${g.color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{g.emoji}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:500,fontSize:15}}>{g.name}</div>
+                    <div style={{width:60,height:4,borderRadius:2,background:g.color,marginTop:4}}/>
+                  </div>
+                  <div style={{display:'flex',gap:4}}>
+                    <button onClick={()=>openEditGrpFn(g)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:16,padding:4}}>✏️</button>
+                    <button onClick={()=>delGrp(g.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:16,padding:4}}>🗑</button>
+                  </div>
+                </div>
+                {subs.length>0&&(
+                  <div style={{marginTop:10,paddingTop:10,borderTop:'.5px solid var(--b1)',display:'flex',flexWrap:'wrap',gap:6}}>
+                    {subs.map(s=>(
+                      <div key={s.id} style={{display:'flex',alignItems:'center',gap:4,background:'var(--bg3)',border:`.5px solid var(--b1)`,borderRadius:20,padding:'4px 10px',fontSize:12}}>
+                        <span style={{color:'var(--t2)'}}>{s.name}</span>
+                        <button onClick={()=>openEditSub(s)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:11,padding:'0 2px'}}>✏️</button>
+                        <button onClick={()=>delSub(s.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:11,padding:'0 2px'}}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button onClick={()=>openAddSubForGroup(g.id)} style={{marginTop:8,background:'none',border:'.5px dashed var(--b2)',borderRadius:20,padding:'4px 12px',fontSize:11,color:'var(--t3)',cursor:'pointer',width:'100%'}}>
+                  + Add sub category
+                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {groups.length===0&&<div className="empty"><div className="empty-icon">📂</div><div>No categories yet</div></div>}
         </div>
       )}
@@ -899,34 +922,6 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
             </div>
           ))}
           {sources.length===0&&<div className="empty"><div className="empty-icon">💳</div><div>No payment sources yet</div></div>}
-        </div>
-      )}
-
-      {tab==='sub'&&(
-        <div className="section">
-          <button className="btn" style={{marginBottom:16}} onClick={openAddSub}>+ Add Sub Category</button>
-          {groups.map(g=>{
-            const subs=subCats.filter(s=>s.group_id===g.id);
-            if(!subs.length)return null;
-            return(
-              <div key={g.id} style={{marginBottom:16}}>
-                <div style={{fontSize:12,fontWeight:600,color:'var(--t3)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:8,display:'flex',alignItems:'center',gap:8}}>
-                  <span>{g.emoji}</span>{g.name}
-                </div>
-                {subs.map(s=>(
-                  <div key={s.id} className="card" style={{display:'flex',alignItems:'center',gap:14,marginBottom:8,padding:'12px 16px'}}>
-                    <div style={{width:8,height:8,borderRadius:'50%',background:g.color,flexShrink:0}}/>
-                    <div style={{flex:1,fontSize:14,fontWeight:500}}>{s.name}</div>
-                    <div style={{display:'flex',gap:4}}>
-                      <button onClick={()=>openEditSub(s)} style={{background:'none',border:'none',color:'var(--t2)',cursor:'pointer',fontSize:14,padding:4}}>✏️</button>
-                      <button onClick={()=>delSub(s.id)} style={{background:'none',border:'none',color:'var(--t3)',cursor:'pointer',fontSize:14,padding:4}}>🗑</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-          {subCats.length===0&&<div className="empty"><div className="empty-icon">🏷️</div><div>No sub categories yet</div></div>}
         </div>
       )}
 
@@ -993,7 +988,11 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
                   {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
                 </select>
               </div>
-              <div className="fg"><label className="fl">Amount (IDR)</label><input className="fi" type="number" inputMode="numeric" placeholder="e.g. 1500000" value={bAmt} onChange={e=>setBAmt(e.target.value)}/></div>
+              <div className="fg"><label className="fl">Amount (IDR)</label>
+                <input className="fi" inputMode="numeric" placeholder="e.g. 1.500.000"
+                  value={bAmt?parseInt(bAmt.replace(/\./g,'').replace(/[^0-9]/g,'')||'0').toLocaleString('id-ID'):''}
+                  onChange={e=>setBAmt(e.target.value.replace(/\./g,'').replace(/[^0-9]/g,''))}/>
+              </div>
               <div className="fg">
                 <label className="fl">Type</label>
                 <div style={{display:'flex',gap:8}}>
