@@ -1612,27 +1612,43 @@ function SpendAnalysis({txs,groups,budgets}){
       list.push({icon:'🗓️',text:patternText,action:patternAction});
     }
 
-    // 7. Peak spending week (#1 from list)
+    // 7. Peak spending week - Mon-Sun weeks within the selected period
     if(mTx.length>=4){
-      const weekBuckets={1:0,2:0,3:0,4:0};
-      const weekTotals={1:0,2:0,3:0,4:0};
+      // Group txs by ISO week (Mon=start)
+      const weekMap={};
       mTx.forEach(t=>{
-        const day=new Date(t.date).getDate();
-        const week=day<=7?1:day<=14?2:day<=21?3:4;
-        weekBuckets[week]++;
-        weekTotals[week]+=t.amount;
+        const d=new Date(t.date);
+        const day=d.getDay(); // 0=Sun
+        const diffToMon=day===0?-6:1-day;
+        const mon=new Date(d);
+        mon.setDate(d.getDate()+diffToMon);
+        const wkKey=mon.toISOString().split('T')[0];
+        if(!weekMap[wkKey])weekMap[wkKey]={key:wkKey,count:0,total:0,mon};
+        weekMap[wkKey].count++;
+        weekMap[wkKey].total+=t.amount;
       });
-      const peakWeek=Object.entries(weekTotals).sort((a,b)=>b[1]-a[1])[0];
-      const peakWkNum=parseInt(peakWeek[0]);
-      const peakWkTotal=peakWeek[1];
-      const peakWkCount=weekBuckets[peakWkNum];
-      const weekLabel=['','Pertama (1-7)','Kedua (8-14)','Ketiga (15-21)','Keempat (22-31)'];
-      const pct=Math.round((peakWkTotal/total)*100);
-      list.push({
-        icon:'📆',
-        text:`Minggu ${weekLabel[peakWkNum]} adalah periode paling boros: ${peakWkCount} transaksi, total ${idr(peakWkTotal)} (${pct}% dari bulan ini).`,
-        action:pct>40?`Coba buat budget mingguan khusus untuk minggu ${weekLabel[peakWkNum].split(' ')[0].toLowerCase()} agar lebih terkontrol.`:null
-      });
+      const weeks=Object.values(weekMap).sort((a,b)=>b.total-a.total);
+      if(weeks.length>0){
+        const peak=weeks[0];
+        const sun=new Date(peak.mon);sun.setDate(peak.mon.getDate()+6);
+        const fmt=d=>d.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+        const pct=Math.round((peak.total/total)*100);
+        list.push({
+          icon:'📆',
+          text:`Minggu ${fmt(peak.mon)}-${fmt(sun)} adalah minggu paling boros: ${peak.count} transaksi, total ${idr(peak.total)} (${pct}% dari periode ini).`,
+          action:(()=>{
+          const avgWk=Math.round(total/weeks.length);
+          const overshoot=peak.total-avgWk;
+          // Pick action based on conditions
+          if(pct>50) return `Lebih dari setengah pengeluaran habis di 1 minggu! Coba pisahkan cash ${idr(avgWk)} per minggu di awal periode biar lebih terkontrol.`;
+          if(pct>40&&peak.count>=7) return `Frekuensi tinggi (${peak.count} transaksi) di minggu ini. Coba kurangi jumlah transaksi jadi maks 4x/minggu untuk latih disiplin.`;
+          if(pct>40&&overshoot>100000) return `Minggu ini over rata-rata ${idr(overshoot)}. Identify 1-2 transaksi terbesar di minggu itu dan evaluasi apakah bisa dihindari.`;
+          if(pct>40) return `Set "weekly spending limit" ${idr(avgWk)} dan track setiap Senin pagi berapa yang sudah keluar.`;
+          if(weeks.length>=3&&peak.total>weeks[weeks.length-1].total*1.5) return `Gap besar antara minggu paling boros vs paling hemat. Coba ratain dengan alokasi ${idr(avgWk)}/minggu.`;
+          return null;
+        })()
+        });
+      }
     }
 
     // 8. Spending acceleration (#4 from list)
