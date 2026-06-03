@@ -1584,14 +1584,17 @@ function SpendAnalysis({txs,groups,budgets}){
       list.push({icon:'✅',text:`Semua kategori masih dalam batas budget. Kerja bagus!`,action:null});
     }
 
-    // 4. Recurring + action
+    // 4. Recurring + action — sort by count desc, then by total desc if count ties
     if(recurring.length>0){
-      const top=recurring[0];
+      const sorted=[...recurring].sort((a,b)=>b.count!==a.count?b.count-a.count:b.total-a.total);
+      const top=sorted[0];
       const saving=Math.round(top.total*0.5);
+      const runner=sorted[1];
+      const noteExtra=runner&&runner.count===top.count?` (${runner.desc} juga ${runner.count}x = ${idr(runner.total)})`:'';
       list.push({
         icon:'🔄',
-        text:`"${top.desc}" rutin ${top.count}x = ${idr(top.total)} bulan ini.`,
-        action:`Jika frekuensinya dikurangi setengah, hemat ${idr(saving)}/bulan.`
+        text:`"${top.desc}" paling sering muncul ${top.count}x dengan total ${idr(top.total)}.${noteExtra}`,
+        action:`Jika frekuensinya dikurangi setengah, potensi hemat ${idr(saving)}/bulan atau ${idr(saving*12)}/tahun.`
       });
     }
 
