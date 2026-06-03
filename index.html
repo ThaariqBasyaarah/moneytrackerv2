@@ -1303,7 +1303,7 @@ function SpendAnalysis({txs,groups,budgets}){
   const [selYear]=useState(new Date().getFullYear());
   const [showRp,setShowRp]=useState(false);
   const [hovered,setHovered]=useState(null);
-  const [showInsights,setShowInsights]=useState(false);
+  const [showInsights,setShowInsights]=useState(true);
 
   const mTx=useMemo(()=>{
     const s=new Date(selYear,selMonth-1,25).toISOString().split('T')[0];
@@ -1480,7 +1480,7 @@ function SpendAnalysis({txs,groups,budgets}){
       </div>
 
       <div className="pills">
-        {MN.map((m,i)=><div key={i} className={`chip ${selMonth===i?'on':''}`} onClick={()=>{setSelMonth(i);setAiInsights(null)}}>{m.slice(0,3)}</div>)}
+        {MN.map((m,i)=><div key={i} className={`chip ${selMonth===i?'on':''}`} onClick={()=>setSelMonth(i)}>{m.slice(0,3)}</div>)}
       </div>
 
       {/* Summary */}
@@ -1501,7 +1501,7 @@ function SpendAnalysis({txs,groups,budgets}){
             <div className="fxb" style={{marginBottom:12}}>
               <div className="section-label" style={{margin:0}}>Spending Insights ✨</div>
               <button onClick={()=>setShowInsights(v=>!v)} style={{background:'var(--abg)',border:'.5px solid var(--a)',borderRadius:20,padding:'5px 14px',fontSize:12,color:'var(--a)',cursor:'pointer',fontFamily:'var(--fb)',fontWeight:500}}>
-                {showInsights?'Hide':'Show'}
+                {showInsights?'Collapse':'Expand'}
               </button>
             </div>
             {showInsights&&(
@@ -1523,12 +1523,7 @@ function SpendAnalysis({txs,groups,budgets}){
                 ))}
               </div>
             )}
-            {!showInsights&&(
-              <div className="card" style={{textAlign:'center',padding:20,cursor:'pointer'}} onClick={()=>setShowInsights(true)}>
-                <div style={{fontSize:24,marginBottom:6}}>💡</div>
-                <div style={{fontSize:13,color:'var(--t2)'}}>Tap Show untuk lihat insights pengeluaran bulan ini</div>
-              </div>
-            )}
+
           </div>
           {/* Pie Chart */}
           <div className="section">
