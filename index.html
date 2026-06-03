@@ -1607,13 +1607,120 @@ function SpendAnalysis({txs,groups,budgets}){
       action:avgDay>300000?`Target turunkan ke ${idr(Math.round(avgDay*0.8))}/hari untuk hemat ${idr(Math.round(avgDay*0.2*30))}/bulan.`:null
     });
 
-    // 6. Avg per transaction
-    const avgAmt=Math.round(total/mTx.length);
-    list.push({
-      icon:'💡',
-      text:`${mTx.length} transaksi, rata-rata ${idr(avgAmt)}/transaksi.`,
-      action:mTx.length>50?`Frekuensi tinggi. Coba batching belanja untuk kurangi impuls belanja.`:null
-    });
+    // 6. Spending pattern - detect day-of-week behavior
+    if(mTx.length>=3){
+      const DAY=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+      const dayCounts={};const dayTotals={};
+      mTx.forEach(t=>{
+        const d=new Date(t.date).getDay();
+        dayCounts[d]=(dayCounts[d]||0)+1;
+        dayTotals[d]=(dayTotals[d]||0)+t.amount;
+      });
+      // Weekend vs weekday
+      const weekendCount=(dayCounts[0]||0)+(dayCounts[6]||0);
+      const weekdayCount=Object.entries(dayCounts).filter(([d])=>d>0&&d<6).reduce((s,[,v])=>s+v,0);
+      const weekendTotal=(dayTotals[0]||0)+(dayTotals[6]||0);
+      const weekdayTotal=Object.entries(dayTotals).filter(([d])=>d>0&&d<6).reduce((s,[,v])=>s+v,0);
+      const weekendPct=mTx.length?Math.round((weekendCount/mTx.length)*100):0;
+      // Find peak day
+      const peakDay=Object.entries(dayCounts).sort((a,b)=>b[1]-a[1])[0];
+      const peakDayName=DAY[peakDay[0]];
+      const peakDayTotal=dayTotals[peakDay[0]]||0;
+      let patternText='';let patternAction=null;
+      if(weekendPct>=40){
+        patternText=`Kamu cenderung belanja di weekend (${weekendPct}% dari transaksi, total ${idr(weekendTotal)}).`;
+        patternAction=`Buat budget khusus weekend atau siapkan daftar belanja sebelum Sabtu-Minggu untuk kontrol pengeluaran.`;
+      } else if(weekendPct<=20&&mTx.length>=5){
+        patternText=`Spending pattern kamu lebih banyak di hari kerja (${100-weekendPct}% dari transaksi).`;
+        patternAction=`Hari ${peakDayName} adalah hari tersibuk dengan ${peakDay[1]} transaksi (${idr(peakDayTotal)}). Perhatikan pengeluaran di hari ini.`;
+      } else {
+        patternText=`Hari ${peakDayName} jadi hari dengan transaksi terbanyak: ${peakDay[1]}x (${idr(peakDayTotal)}).`;
+        patternAction=weekendCount>weekdayCount/2.5?`Kamu cukup aktif belanja di weekend. Coba review pengeluaran Sabtu-Minggu.`:null;
+      }
+      list.push({icon:'🗓️',text:patternText,action:patternAction});
+    }
+
+    // 7. Peak spending week (#1 from list)
+    if(mTx.length>=4){
+      const weekBuckets={1:0,2:0,3:0,4:0};
+      const weekTotals={1:0,2:0,3:0,4:0};
+      mTx.forEach(t=>{
+        const day=new Date(t.date).getDate();
+        const week=day<=7?1:day<=14?2:day<=21?3:4;
+        weekBuckets[week]++;
+        weekTotals[week]+=t.amount;
+      });
+      const peakWeek=Object.entries(weekTotals).sort((a,b)=>b[1]-a[1])[0];
+      const peakWkNum=parseInt(peakWeek[0]);
+      const peakWkTotal=peakWeek[1];
+      const peakWkCount=weekBuckets[peakWkNum];
+      const weekLabel=['','Pertama (1-7)','Kedua (8-14)','Ketiga (15-21)','Keempat (22-31)'];
+      const pct=Math.round((peakWkTotal/total)*100);
+      list.push({
+        icon:'📆',
+        text:`Minggu ${weekLabel[peakWkNum]} adalah periode paling boros: ${peakWkCount} transaksi, total ${idr(peakWkTotal)} (${pct}% dari bulan ini).`,
+        action:pct>40?`Coba buat budget mingguan khusus untuk minggu ${weekLabel[peakWkNum].split(' ')[0].toLowerCase()} agar lebih terkontrol.`:null
+      });
+    }
+
+    // 8. Spending acceleration (#4 from list)
+    if(mTx.length>=4){
+      const periodStart=new Date(selYear,selMonth-1,25);
+      const midPoint=new Date(periodStart);
+      midPoint.setDate(periodStart.getDate()+15);
+      const midStr=midPoint.toISOString().split('T')[0];
+      const startStr=periodStart.toISOString().split('T')[0];
+      const endStr=new Date(selYear,selMonth,24).toISOString().split('T')[0];
+      const firstHalf=mTx.filter(t=>t.date>=startStr&&t.date<midStr).reduce((s,t)=>s+t.amount,0);
+      const secondHalf=mTx.filter(t=>t.date>=midStr&&t.date<=endStr).reduce((s,t)=>s+t.amount,0);
+      if(firstHalf>0&&secondHalf>0){
+        const diff=secondHalf-firstHalf;
+        const diffPct=Math.abs(Math.round((diff/firstHalf)*100));
+        if(diffPct>=20){
+          if(diff>0){
+            list.push({
+              icon:'🚀',
+              text:`Spending accelerating! 15 hari kedua (${idr(secondHalf)}) lebih boros ${diffPct}% dibanding 15 hari pertama (${idr(firstHalf)}).`,
+              action:`Kamu cenderung boros menjelang akhir periode. Coba sisihkan budget lebih ketat di pertengahan bulan.`
+            });
+          } else {
+            list.push({
+              icon:'📉',
+              text:`Good control! 15 hari kedua (${idr(secondHalf)}) lebih hemat ${diffPct}% dibanding 15 hari pertama (${idr(firstHalf)}).`,
+              action:null
+            });
+          }
+        }
+      }
+    }
+
+    // 9. Small & frequent vs big & rare (#7 from list)
+    if(mTx.length>=3){
+      const avgAmt=Math.round(total/mTx.length);
+      const smallTx=mTx.filter(t=>t.amount<avgAmt);
+      const bigTx=mTx.filter(t=>t.amount>=avgAmt*2);
+      const smallTotal=smallTx.reduce((s,t)=>s+t.amount,0);
+      const bigTotal=bigTx.reduce((s,t)=>s+t.amount,0);
+      if(smallTx.length>mTx.length*0.7){
+        list.push({
+          icon:'🪙',
+          text:`Spending style kamu: banyak transaksi kecil (${smallTx.length} dari ${mTx.length} tx di bawah ${idr(avgAmt)}), total ${idr(smallTotal)}.`,
+          action:`Transaksi kecil yang sering bisa menumpuk. Coba track pengeluaran harian untuk sadar lebih cepat.`
+        });
+      } else if(bigTx.length>0&&bigTotal>total*0.5){
+        list.push({
+          icon:'🐋',
+          text:`Spending style kamu: sedikit tapi besar — ${bigTx.length} transaksi besar (≥${idr(avgAmt*2)}) menyumbang ${Math.round(bigTotal/total*100)}% dari total.`,
+          action:`Fokus kontrol di ${bigTx.length} transaksi besar ini karena dampaknya paling signifikan ke total spending.`
+        });
+      } else {
+        list.push({
+          icon:'⚖️',
+          text:`Spending style kamu seimbang: mix antara transaksi kecil (${smallTx.length}x) dan besar (${bigTx.length}x). Rata-rata ${idr(avgAmt)}/transaksi.`,
+          action:null
+        });
+      }
+    }
 
     return list;
   },[mTx,total,prevTotal,prevTx,slices,byG,budgets,groups,recurring,selMonth,selYear]);
