@@ -1395,11 +1395,11 @@ function MonthlyTrendChart({txs,groups,selMonth,selYear}){
                   onMouseEnter={()=>setTooltip({x:p.x,y:p.y,label:p.m,value:p.v,idx:i})}
                   onTouchStart={()=>setTooltip({x:p.x,y:p.y,label:p.m,value:p.v,idx:i})}/>
                 {tooltip?.idx===i&&<circle cx={p.x} cy={p.y} r="4" fill={lineColor} stroke="var(--bg2)" strokeWidth="2"/>}
-                <text x={p.x} y={H-8} textAnchor="middle" fontSize="8" fill={i===selMonth-1?lineColor:"var(--t3)"} fontFamily="DM Sans" fontWeight={i===selMonth-1?700:400}>{p.m}</text>
+                <text x={p.x} y={H-8} textAnchor="middle" fontSize="8" fill={i===selMonth?lineColor:"var(--t3)"} fontFamily="DM Sans" fontWeight={i===selMonth?700:400}>{p.m}</text>
               </g>
             ))}
             {/* Active dot always shown for current month */}
-            {pts[selMonth-1]&&<circle cx={pts[selMonth-1].x} cy={pts[selMonth-1].y} r="4" fill={lineColor} stroke="var(--bg2)" strokeWidth="2"/>}
+            {pts[selMonth]&&<circle cx={pts[selMonth].x} cy={pts[selMonth].y} r="4" fill={lineColor} stroke="var(--bg2)" strokeWidth="2"/>}
           </svg>
 
           {/* Tooltip */}
