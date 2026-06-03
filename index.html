@@ -1297,6 +1297,148 @@ function Profile({currentUser,txs,onRefresh,onLogout}){
   );
 }
 
+// ── MONTHLY TREND CHART ──────────────────────────────────────────────
+function MonthlyTrendChart({txs,groups,selYear}){
+  const [viewCat,setViewCat]=useState(null); // null = total, gid = per category
+  const [tooltip,setTooltip]=useState(null); // {x,y,label,value}
+
+  // Build 12 months of data
+  const months=useMemo(()=>{
+    const arr=[];
+    for(let m=0;m<12;m++){
+      const s=new Date(selYear,m-1,25).toISOString().split('T')[0];
+      const e=new Date(selYear,m,24).toISOString().split('T')[0];
+      const mTx=txs.filter(t=>t.date>=s&&t.date<=e);
+      const total=mTx.reduce((sum,t)=>sum+t.amount,0);
+      const byCat={};
+      mTx.forEach(t=>{byCat[t.group_id]=(byCat[t.group_id]||0)+t.amount});
+      arr.push({month:m,label:MN[m].slice(0,3),total,byCat,mTx});
+    }
+    return arr;
+  },[txs,selYear]);
+
+  const activeData=useMemo(()=>months.map(m=>viewCat?m.byCat[viewCat]||0:m.total),[months,viewCat]);
+  const maxVal=Math.max(...activeData,1);
+  const activeGroup=viewCat?groups.find(g=>g.id===viewCat):null;
+  const lineColor=activeGroup?activeGroup.color:'#c8f560';
+
+  // SVG dimensions
+  const W=320,H=140,padL=48,padR=12,padT=16,padB=28;
+  const chartW=W-padL-padR;
+  const chartH=H-padT-padB;
+  const xStep=chartW/(months.length-1);
+
+  const pts=activeData.map((v,i)=>({
+    x:padL+i*xStep,
+    y:padT+chartH-(v/maxVal)*chartH,
+    v,m:months[i].label,idx:i
+  }));
+
+  // Build smooth SVG path
+  const pathD=pts.reduce((d,p,i)=>{
+    if(i===0)return `M ${p.x} ${p.y}`;
+    const prev=pts[i-1];
+    const cpx=(prev.x+p.x)/2;
+    return d+` C ${cpx} ${prev.y} ${cpx} ${p.y} ${p.x} ${p.y}`;
+  },'');
+
+  // Area fill path
+  const areaD=pathD+` L ${pts[pts.length-1].x} ${padT+chartH} L ${pts[0].x} ${padT+chartH} Z`;
+
+  // Y axis labels
+  const yLabels=[0,.25,.5,.75,1].map(f=>({
+    y:padT+chartH-f*chartH,
+    label:maxVal*f>=1000000?`${(maxVal*f/1000000).toFixed(1)}M`:maxVal*f>=1000?`${Math.round(maxVal*f/1000)}K`:'0'
+  }));
+
+  return(
+    <div className="section">
+      <div className="section-label">Monthly Expenses Trend</div>
+      <div className="card">
+        {/* Toggle: Total vs Per Category */}
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
+          <div onClick={()=>setViewCat(null)} className={`chip ${!viewCat?'on':''}`} style={{fontSize:11,padding:'5px 10px'}}>
+            Total
+          </div>
+          {groups.filter(g=>months.some(m=>m.byCat[g.id]>0)).map(g=>(
+            <div key={g.id} onClick={()=>setViewCat(g.id===viewCat?null:g.id)}
+              style={{display:'inline-flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:20,fontSize:11,cursor:'pointer',border:`.5px solid ${viewCat===g.id?g.color:'var(--b1)'}`,background:viewCat===g.id?`${g.color}18`:'var(--bg3)',color:viewCat===g.id?g.color:'var(--t2)',transition:'all .15s',flexShrink:0}}>
+              <span>{g.emoji}</span>{g.name}
+            </div>
+          ))}
+        </div>
+
+        {/* Chart */}
+        <div style={{position:'relative'}} onMouseLeave={()=>setTooltip(null)} onTouchEnd={()=>setTimeout(()=>setTooltip(null),2000)}>
+          <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{display:'block',overflow:'visible'}}>
+            {/* Y grid lines */}
+            {yLabels.map((yl,i)=>(
+              <g key={i}>
+                <line x1={padL} y1={yl.y} x2={W-padR} y2={yl.y} stroke="rgba(255,255,255,0.05)" strokeWidth="1"/>
+                <text x={padL-4} y={yl.y+4} textAnchor="end" fontSize="8" fill="var(--t3)" fontFamily="DM Sans">{yl.label}</text>
+              </g>
+            ))}
+            {/* Area fill */}
+            <defs>
+              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={lineColor} stopOpacity="0.25"/>
+                <stop offset="100%" stopColor={lineColor} stopOpacity="0.02"/>
+              </linearGradient>
+            </defs>
+            <path d={areaD} fill="url(#areaGrad)"/>
+            {/* Line */}
+            <path d={pathD} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            {/* Data points + hit areas */}
+            {pts.map((p,i)=>(
+              <g key={i}>
+                <rect x={p.x-xStep/2} y={padT} width={xStep} height={chartH} fill="transparent" style={{cursor:'pointer'}}
+                  onMouseEnter={()=>setTooltip({x:p.x,y:p.y,label:p.m,value:p.v})}
+                  onTouchStart={()=>setTooltip({x:p.x,y:p.y,label:p.m,value:p.v})}/>
+                {tooltip?.idx===i&&<circle cx={p.x} cy={p.y} r="4" fill={lineColor} stroke="var(--bg2)" strokeWidth="2"/>}
+                <text x={p.x} y={H-8} textAnchor="middle" fontSize="8" fill={i===selMonth-1?lineColor:"var(--t3)"} fontFamily="DM Sans" fontWeight={i===selMonth-1?700:400}>{p.m}</text>
+              </g>
+            ))}
+            {/* Active dot always shown for current month */}
+            {pts[selMonth-1]&&<circle cx={pts[selMonth-1].x} cy={pts[selMonth-1].y} r="4" fill={lineColor} stroke="var(--bg2)" strokeWidth="2"/>}
+          </svg>
+
+          {/* Tooltip */}
+          {tooltip&&(
+            <div style={{
+              position:'absolute',
+              left:Math.min(Math.max(tooltip.x/320*100,10),75)+'%',
+              top:Math.max(0,tooltip.y/140*100-20)+'%',
+              transform:'translateX(-50%)',
+              background:'var(--bg)',border:`.5px solid ${lineColor}`,
+              borderRadius:8,padding:'6px 10px',pointerEvents:'none',zIndex:10,
+              minWidth:80,textAlign:'center'
+            }}>
+              <div style={{fontSize:10,color:'var(--t3)',marginBottom:2}}>{tooltip.label} {selYear}</div>
+              <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,color:lineColor}}>{idr(tooltip.value)}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Summary row */}
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:10,paddingTop:10,borderTop:'.5px solid var(--b1)'}}>
+          <div>
+            <div style={{fontSize:11,color:'var(--t3)'}}>Highest month</div>
+            <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,color:lineColor,marginTop:2}}>
+              {MN[activeData.indexOf(Math.max(...activeData))]} — {idr(Math.max(...activeData))}
+            </div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:11,color:'var(--t3)'}}>YTD Total</div>
+            <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,color:'var(--t1)',marginTop:2}}>
+              {idr(activeData.reduce((s,v)=>s+v,0))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── SPEND ANALYSIS ───────────────────────────────────────────────────
 function SpendAnalysis({txs,groups,budgets}){
   const [selMonth,setSelMonth]=useState(new Date().getMonth());
@@ -1571,6 +1713,9 @@ function SpendAnalysis({txs,groups,budgets}){
               </div>
             </div>
           </div>
+
+          {/* Monthly Trend Chart */}
+          <MonthlyTrendChart txs={txs} groups={groups} selMonth={selMonth} selYear={selYear}/>
 
           {/* Top 5 Categories */}
           <div className="section">
