@@ -514,7 +514,7 @@ function PieChart({data,groups,total}){
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────
-function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
+function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
   const [mon,setMon]=useState(new Date().getMonth());
   const [yr]=useState(new Date().getFullYear());
   const [wf,setWf]=useState(()=>{const d=new Date();d.setDate(d.getDate()-6);return d.toISOString().split('T')[0]});
@@ -636,6 +636,54 @@ function Dashboard({txs,groups,budgets,onRefresh,syncing,onEditTx}){
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Payment Source Totals */}
+      {sources.length>0&&(
+        <div className="section">
+          <div className="section-label">Monthly by Payment Source</div>
+          <div className="card" style={{padding:'4px 18px'}}>
+            {sources.map(src=>{
+              const total=mTx.filter(t=>t.source_id===src.id).reduce((s,t)=>s+t.amount,0);
+              if(!total)return null;
+              const pct=mTotal?Math.round((total/mTotal)*100):0;
+              return(
+                <div key={src.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:'.5px solid var(--b1)'}}>
+                  <div style={{width:38,height:38,borderRadius:10,background:'var(--bg3)',border:'.5px solid var(--b1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>{src.icon}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:500}}>{src.name}</div>
+                    <div style={{marginTop:5,height:4,borderRadius:2,background:'var(--bg4)',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${pct}%`,background:'var(--a)',borderRadius:2,transition:'width .5s'}}/>
+                    </div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontFamily:'var(--fh)',fontSize:14,fontWeight:700,color:'var(--t1)'}}>{idr(total)}</div>
+                    <div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{pct}% of total</div>
+                  </div>
+                </div>
+              );
+            })}
+            {mTx.filter(t=>!t.source_id).reduce((s,t)=>s+t.amount,0)>0&&(()=>{
+              const uncat=mTx.filter(t=>!t.source_id).reduce((s,t)=>s+t.amount,0);
+              const pct=mTotal?Math.round((uncat/mTotal)*100):0;
+              return(
+                <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 0'}}>
+                  <div style={{width:38,height:38,borderRadius:10,background:'var(--bg3)',border:'.5px solid var(--b1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>❓</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:500,color:'var(--t2)'}}>Unassigned</div>
+                    <div style={{marginTop:5,height:4,borderRadius:2,background:'var(--bg4)',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${pct}%`,background:'var(--t3)',borderRadius:2}}/>
+                    </div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontFamily:'var(--fh)',fontSize:14,fontWeight:700,color:'var(--t2)'}}>{idr(uncat)}</div>
+                    <div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{pct}% of total</div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -1681,7 +1729,7 @@ function App(){
 
       {/* Main content */}
       <div className="main-wrap">
-        {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
+        {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} sources={sources} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
         {tab==='hist'&&<History txs={txs} groups={groups} onDelete={delTx} onEdit={setEditTxItem}/>}
         {tab==='analysis'&&<SpendAnalysis txs={txs} groups={groups} budgets={budgets}/>}
         {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} sources={sources} setSources={setSources} subCats={subCats} setSubCats={setSubCats} currentUser={user}/>}
