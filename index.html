@@ -1505,127 +1505,130 @@ function SpendAnalysis({txs,groups,budgets}){
   },[txs,selMonth,selYear]);
   const prevTotal=useMemo(()=>prevTx.reduce((s,t)=>s+t.amount,0),[prevTx]);
 
-  // Rule-based insights
   const insights=useMemo(()=>{
     if(!mTx.length||!total)return[];
     const list=[];
 
-    // 1. MoM comparison
-    if(prevTotal>0){
-      const diff=total-prevTotal;
-      const pct=Math.abs((diff/prevTotal)*100).toFixed(0);
+    // ── #1 MoM Comparison ────────────────────────────────────────────
+    {
       const prevMonthName=MN[selMonth-1>=0?selMonth-1:11];
-      if(diff>0){
-        list.push({
-          icon:'📈',
-          text:`Pengeluaran naik ${pct}% vs ${prevMonthName} (${idr(prevTotal)}). Selisih +${idr(diff)}.`,
-          action:`Coba kurangi pengeluaran ${idr(Math.abs(diff))} bulan depan untuk kembali ke level ${prevMonthName}.`
-        });
-      } else if(diff<0){
-        list.push({
-          icon:'📉',
-          text:`Pengeluaran turun ${pct}% vs ${prevMonthName} (${idr(prevTotal)}). Hemat ${idr(Math.abs(diff))}!`,
-          action:`Pertahankan kebiasaan ini. Jika konsisten, bisa hemat ${idr(Math.abs(diff)*12)}/tahun.`
-        });
+      if(prevTotal>0){
+        const diff=total-prevTotal;
+        const pct=Math.abs((diff/prevTotal)*100);
+        const absDiff=Math.abs(diff);
+        let text,action;
+        if(diff>0){
+          text=`Pengeluaran naik ${pct.toFixed(0)}% vs ${prevMonthName} (${idr(prevTotal)}). Selisih +${idr(diff)}.`;
+          if(pct<15) action=`Identifikasi 1 kategori yang naik paling banyak dan set batas maksimalnya bulan depan.`;
+          else if(pct<30) action=`Cek apakah ada one-time expense yang wajar, atau ada kebiasaan baru yang perlu dikontrol.`;
+          else if(pct<50) action=`Pengeluaran naik signifikan. Review semua transaksi >Rp 100K dan evaluasi yang bisa dihilangkan.`;
+          else action=`Pengeluaran melonjak drastis. Immediate action: freeze semua pengeluaran non-esensial minggu ini.`;
+          // Check if also over budget
+          const anyOver=groups.some(g=>{const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');return b&&(byG[g.id]||0)>b.amount;});
+          if(anyOver) action=`Double trouble: naik MoM dan over budget. Audit semua kategori dan potong 1 yang paling tidak esensial.`;
+          list.push({icon:'📈',text,action});
+        } else if(diff<0){
+          text=`Pengeluaran turun ${pct.toFixed(0)}% vs ${prevMonthName} (${idr(prevTotal)}). Hemat ${idr(absDiff)}!`;
+          const allOk=!groups.some(g=>{const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');return b&&(byG[g.id]||0)>b.amount;});
+          if(allOk&&pct>9) action=`Perfect month! Coba challenge diri turunkan lagi 10% bulan depan.`;
+          else if(pct>30) action=`Penghematan luar biasa ${idr(absDiff)}! Jadikan angka bulan ini sebagai target baru ke depannya.`;
+          else if(pct>15) action=`Penghematan solid! Investasikan selisih ${idr(absDiff)} ke dana darurat atau instrumen investasi.`;
+          else action=`Progress bagus! Alokasikan selisih ${idr(absDiff)} ke tabungan bulan depan.`;
+          list.push({icon:'📉',text,action});
+        } else {
+          list.push({icon:'📊',text:`Pengeluaran sama persis dengan ${prevMonthName} (${idr(prevTotal)}).`,action:null});
+        }
       } else {
-        list.push({icon:'📊',text:`Pengeluaran sama dengan ${prevMonthName} (${idr(prevTotal)}).`,action:null});
+        list.push({icon:'📊',text:`Belum ada data bulan sebelumnya untuk perbandingan.`,action:`Mulai tracking konsisten dari bulan ini sebagai baseline untuk evaluasi bulan depan.`});
       }
-    } else {
-      list.push({icon:'📊',text:`Belum ada data bulan sebelumnya untuk perbandingan.`,action:null});
     }
 
-    // 3. Budget check + action
-    const overBudget=groups.filter(g=>{
-      const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
-      return b&&(byG[g.id]||0)>b.amount;
-    });
-    const nearBudget=groups.filter(g=>{
-      const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
-      if(!b)return false;
-      const pct=(byG[g.id]||0)/b.amount;
-      return pct>=0.8&&pct<1;
-    });
-    if(overBudget.length>0){
-      const totalOver=overBudget.reduce((s,g)=>{
-        const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
-        return s+((byG[g.id]||0)-b.amount);
-      },0);
-      list.push({
-        icon:'🚨',
-        text:`${overBudget.map(g=>g.name).join(', ')} melebihi budget total ${idr(totalOver)}.`,
-        action:`Stop atau tunda pengeluaran di kategori tersebut hingga akhir periode.`
-      });
-    } else if(nearBudget.length>0){
-      list.push({
-        icon:'⚠️',
-        text:`${nearBudget.map(g=>g.name).join(', ')} sudah mencapai >80% budget.`,
-        action:`Hati-hati, sisa budget tinggal sedikit. Pantau pengeluaran lebih ketat.`
-      });
-    } else if(budgets.length>0){
-      list.push({icon:'✅',text:`Semua kategori masih dalam batas budget. Kerja bagus!`,action:null});
+    // ── #2 Budget Check ───────────────────────────────────────────────
+    {
+      const overCats=groups.filter(g=>{const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');return b&&(byG[g.id]||0)>b.amount;});
+      const nearCats=groups.filter(g=>{const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');if(!b)return false;const p=(byG[g.id]||0)/b.amount;return p>=0.8&&p<1;});
+      const zeroCats=groups.filter(g=>{const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');return b&&!(byG[g.id]);});
+      const totalBudget=budgets.filter(b=>b.type==='monthly').reduce((s,b)=>s+b.amount,0);
+      const totalOver=overCats.reduce((s,g)=>{const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');return s+((byG[g.id]||0)-b.amount);},0);
+
+      if(overCats.length===0&&budgets.length===0){
+        // no budgets set - skip
+      } else if(overCats.length>=3){
+        list.push({icon:'🚨',text:`${overCats.length} kategori over budget sekaligus (total lebih ${idr(totalOver)}).`,action:`Banyak kategori over budget — revisit semua angka budget agar lebih realistis dengan actual spending pattern kamu.`});
+      } else if(overCats.length===2){
+        list.push({icon:'🚨',text:`${overCats.map(g=>g.name).join(' & ')} melebihi budget (total over ${idr(totalOver)}).`,action:`2 kategori sekaligus over. Prioritaskan mana yang lebih esensial dan potong yang lain sampai periode reset.`});
+      } else if(overCats.length===1){
+        const g=overCats[0];const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
+        const overPct=Math.round(((byG[g.id]||0)/b.amount-1)*100);
+        if(overPct<10) action=`Hampir on budget! Kurangi 1-2 transaksi kecil di ${g.name} bulan depan untuk kembali ke target.`;
+        else action=`${g.name} jebol ${overPct}% dari budget. Stop semua pengeluaran di kategori ini sampai periode reset.`;
+        list.push({icon:'🚨',text:`${g.emoji} ${g.name} over budget ${overPct}% (spent ${idr(byG[g.id]||0)} dari ${idr(b.amount)}).`,action});
+      } else if(nearCats.length>0){
+        const g=nearCats[0];const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
+        const sisa=b.amount-(byG[g.id]||0);
+        const sisPct=Math.round((sisa/b.amount)*100);
+        const action=sisPct<=10?`Nyaris habis! Estimasi sisa hari dan hitung maks pengeluaran harian agar tidak jebol.`:`Sisa ${idr(sisa)} untuk ${g.name}. Tahan pengeluaran non-esensial sampai periode berakhir.`;
+        list.push({icon:'⚠️',text:`${g.emoji} ${g.name} sudah ${100-sisPct}% dari budget (sisa ${idr(sisa)}).`,action});
+      } else if(budgets.length>0&&zeroCats.length>0){
+        list.push({icon:'✅',text:`Semua budget terkontrol bagus! ${zeroCats.map(g=>g.name).join(', ')} belum ada spending.`,action:`Ada kategori dengan 0 spending — budget-nya bisa dialihkan sementara ke kategori yang lebih aktif.`});
+      } else if(budgets.length>0){
+        const allLow=groups.filter(g=>{const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');return b&&(byG[g.id]||0)/b.amount<0.7;}).length===budgets.length;
+        list.push({icon:'✅',text:`Semua kategori masih dalam batas budget.`,action:allLow?`Budget masih sangat aman di semua kategori. Coba challenge turunkan budget 10-15% bulan depan.`:`Spending terkontrol! Pertahankan dan alokasikan sisa budget akhir periode ke tabungan.`});
+      }
     }
 
-    // 4. Recurring + action — sort by count desc, then by total desc if count ties
+    // ── #3 Recurring ─────────────────────────────────────────────────
     if(recurring.length>0){
       const sorted=[...recurring].sort((a,b)=>b.count!==a.count?b.count-a.count:b.total-a.total);
       const top=sorted[0];
+      const recurringTotal=recurring.reduce((s,r)=>s+r.total,0);
+      const recurPct=Math.round((recurringTotal/total)*100);
       const saving=Math.round(top.total*0.5);
       const runner=sorted[1];
       const noteExtra=runner&&runner.count===top.count?` (${runner.desc} juga ${runner.count}x = ${idr(runner.total)})`:'';
-      list.push({
-        icon:'🔄',
-        text:`"${top.desc}" paling sering muncul ${top.count}x dengan total ${idr(top.total)}.${noteExtra}`,
-        action:`Jika frekuensinya dikurangi setengah, potensi hemat ${idr(saving)}/bulan atau ${idr(saving*12)}/tahun.`
-      });
+      let action;
+      if(recurPct>50) action=`Pengeluaran rutin mendominasi ${recurPct}% total. Audit semua — cancel minimal 1 yang jarang dipakai bulan ini.`;
+      else if(recurPct>30) action=`Recurring cukup besar (${recurPct}% total). Cari alternatif lebih murah untuk "${top.desc}" sebagai item terbesar.`;
+      else if(recurring.length>5) action=`Ada ${recurring.length} item recurring. Buat spreadsheet audit semua dan evaluasi mana yang masih worth it.`;
+      else if(top.count>=5) action=`"${top.desc}" muncul ${top.count}x — cek apakah frekuensi ini memang kebutuhan atau habit tanpa sadar.`;
+      else if(recurPct<15) action=`Recurring terkontrol bagus. Pastikan semua masih aktif dipakai — jangan bayar yang tidak digunakan.`;
+      else action=`Jika frekuensi "${top.desc}" dikurangi setengah, potensi hemat ${idr(saving)}/bulan atau ${idr(saving*12)}/tahun.`;
+      list.push({icon:'🔄',text:`"${top.desc}" paling sering: ${top.count}x = ${idr(top.total)}.${noteExtra}`,action});
     }
 
-    // 6. Spending pattern - detect day-of-week behavior
+    // ── #4 Spending Pattern ───────────────────────────────────────────
     if(mTx.length>=3){
       const DAY=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
       const dayCounts={};const dayTotals={};
-      mTx.forEach(t=>{
-        const d=new Date(t.date).getDay();
-        dayCounts[d]=(dayCounts[d]||0)+1;
-        dayTotals[d]=(dayTotals[d]||0)+t.amount;
-      });
-      // Weekend vs weekday
+      mTx.forEach(t=>{const d=new Date(t.date).getDay();dayCounts[d]=(dayCounts[d]||0)+1;dayTotals[d]=(dayTotals[d]||0)+t.amount;});
       const weekendCount=(dayCounts[0]||0)+(dayCounts[6]||0);
-      const weekdayCount=Object.entries(dayCounts).filter(([d])=>d>0&&d<6).reduce((s,[,v])=>s+v,0);
       const weekendTotal=(dayTotals[0]||0)+(dayTotals[6]||0);
       const weekdayTotal=Object.entries(dayTotals).filter(([d])=>d>0&&d<6).reduce((s,[,v])=>s+v,0);
-      const weekendPct=mTx.length?Math.round((weekendCount/mTx.length)*100):0;
-      // Find peak day
+      const weekendPct=Math.round((weekendCount/mTx.length)*100);
       const peakDay=Object.entries(dayCounts).sort((a,b)=>b[1]-a[1])[0];
       const peakDayName=DAY[peakDay[0]];
-      const peakDayTotal=dayTotals[peakDay[0]]||0;
-      let patternText='';let patternAction=null;
-      if(weekendPct>=40){
-        patternText=`Kamu cenderung belanja di weekend (${weekendPct}% dari transaksi, total ${idr(weekendTotal)}).`;
-        patternAction=`Buat budget khusus weekend atau siapkan daftar belanja sebelum Sabtu-Minggu untuk kontrol pengeluaran.`;
-      } else if(weekendPct<=20&&mTx.length>=5){
-        patternText=`Spending pattern kamu lebih banyak di hari kerja (${100-weekendPct}% dari transaksi).`;
-        patternAction=`Hari ${peakDayName} adalah hari tersibuk dengan ${peakDay[1]} transaksi (${idr(peakDayTotal)}). Perhatikan pengeluaran di hari ini.`;
-      } else {
-        patternText=`Hari ${peakDayName} jadi hari dengan transaksi terbanyak: ${peakDay[1]}x (${idr(peakDayTotal)}).`;
-        patternAction=weekendCount>weekdayCount/2.5?`Kamu cukup aktif belanja di weekend. Coba review pengeluaran Sabtu-Minggu.`:null;
-      }
-      list.push({icon:'🗓️',text:patternText,action:patternAction});
+      const avgWkend=weekendCount>0?Math.round(weekendTotal/Math.ceil(weekendCount/2)):0;
+      let text,action;
+      if(weekendPct>60){text=`Weekend spender berat: ${weekendPct}% transaksi di Sabtu-Minggu (${idr(weekendTotal)}).`;action=`Buat 'weekend cash envelope' ${idr(avgWkend)}/weekend — habis ya habis, tidak boleh tambah.`;}
+      else if(weekendPct>=40){text=`Cenderung belanja di weekend (${weekendPct}% transaksi, total ${idr(weekendTotal)}).`;action=`Siapkan to-do list belanja sebelum Sabtu agar tidak impulsif saat sudah di toko/mall.`;}
+      else if(weekendPct>=30){text=`Weekend spending moderat (${weekendPct}%).`;action=`Coba batasi outing weekend jadi 1x per minggu untuk kurangi peluang impulse buying.`;}
+      else if(parseInt(peakDay[0])===1){text=`Senin jadi hari dengan transaksi terbanyak: ${peakDay[1]}x.`;action=`Senin sering boros — bisa jadi weekend hangover effect. Set hard limit Rp ${Math.round(dayTotals[1]/4/1000)*1000} untuk hari Senin.`;}
+      else if(parseInt(peakDay[0])===5){text=`Jumat adalah hari paling boros: ${peakDay[1]} transaksi.`;action=`TGIF effect nyata! Tunda pembelian Jumat ke Sabtu pagi saat lebih rasional dan tidak terbawa euforia akhir pekan.`;}
+      else if(weekendPct<=20&&mTx.length>=5){text=`Spending dominan di hari kerja (${100-weekendPct}% transaksi). Hari ${peakDayName} paling aktif.`;action=`Coba 'designated spending day' — belanja rutin hanya di ${peakDayName} & 1 hari lain untuk kurangi frekuensi.`;}
+      else{text=`Hari ${peakDayName} jadi hari dengan transaksi terbanyak: ${peakDay[1]}x (${idr(dayTotals[parseInt(peakDay[0])]||0)}).`;action=`Coba meal prep atau rencanakan aktivitas di ${peakDayName} untuk kurangi pengeluaran spontan di hari itu.`;}
+      list.push({icon:'🗓️',text,action});
     }
 
-    // 7. Peak spending week - Mon-Sun weeks within the selected period
+    // ── #5 Peak Spending Week ─────────────────────────────────────────
     if(mTx.length>=4){
-      // Group txs by ISO week (Mon=start)
       const weekMap={};
       mTx.forEach(t=>{
-        const d=new Date(t.date);
-        const day=d.getDay(); // 0=Sun
+        const d=new Date(t.date);const day=d.getDay();
         const diffToMon=day===0?-6:1-day;
-        const mon=new Date(d);
-        mon.setDate(d.getDate()+diffToMon);
+        const mon=new Date(d);mon.setDate(d.getDate()+diffToMon);
         const wkKey=mon.toISOString().split('T')[0];
-        if(!weekMap[wkKey])weekMap[wkKey]={key:wkKey,count:0,total:0,mon};
-        weekMap[wkKey].count++;
-        weekMap[wkKey].total+=t.amount;
+        if(!weekMap[wkKey])weekMap[wkKey]={key:wkKey,count:0,total:0,mon:new Date(mon)};
+        weekMap[wkKey].count++;weekMap[wkKey].total+=t.amount;
       });
       const weeks=Object.values(weekMap).sort((a,b)=>b.total-a.total);
       if(weeks.length>0){
@@ -1633,29 +1636,23 @@ function SpendAnalysis({txs,groups,budgets}){
         const sun=new Date(peak.mon);sun.setDate(peak.mon.getDate()+6);
         const fmt=d=>d.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
         const pct=Math.round((peak.total/total)*100);
-        list.push({
-          icon:'📆',
-          text:`Minggu ${fmt(peak.mon)}-${fmt(sun)} adalah minggu paling boros: ${peak.count} transaksi, total ${idr(peak.total)} (${pct}% dari periode ini).`,
-          action:(()=>{
-          const avgWk=Math.round(total/weeks.length);
-          const overshoot=peak.total-avgWk;
-          // Pick action based on conditions
-          if(pct>50) return `Lebih dari setengah pengeluaran habis di 1 minggu! Coba pisahkan cash ${idr(avgWk)} per minggu di awal periode biar lebih terkontrol.`;
-          if(pct>40&&peak.count>=7) return `Frekuensi tinggi (${peak.count} transaksi) di minggu ini. Coba kurangi jumlah transaksi jadi maks 4x/minggu untuk latih disiplin.`;
-          if(pct>40&&overshoot>100000) return `Minggu ini over rata-rata ${idr(overshoot)}. Identify 1-2 transaksi terbesar di minggu itu dan evaluasi apakah bisa dihindari.`;
-          if(pct>40) return `Set "weekly spending limit" ${idr(avgWk)} dan track setiap Senin pagi berapa yang sudah keluar.`;
-          if(weeks.length>=3&&peak.total>weeks[weeks.length-1].total*1.5) return `Gap besar antara minggu paling boros vs paling hemat. Coba ratain dengan alokasi ${idr(avgWk)}/minggu.`;
-          return null;
-        })()
-        });
+        const avgWk=Math.round(total/weeks.length);
+        const overshoot=peak.total-avgWk;
+        let action;
+        if(pct>50) action=`Lebih dari setengah pengeluaran habis di 1 minggu! Pisahkan cash ${idr(avgWk)}/minggu di awal periode biar lebih terkontrol.`;
+        else if(pct>40&&peak.count>=7) action=`Frekuensi tinggi (${peak.count} transaksi) di minggu ini. Coba kurangi jadi maks 4x/minggu untuk latih disiplin.`;
+        else if(pct>40&&overshoot>100000) action=`Minggu ini over rata-rata ${idr(overshoot)}. Identify 1-2 transaksi terbesar di minggu itu dan evaluasi apakah bisa dihindari.`;
+        else if(pct>40) action=`Set "weekly spending limit" ${idr(avgWk)} dan track setiap Senin pagi berapa yang sudah keluar.`;
+        else if(weeks.length>=3&&peak.total>weeks[weeks.length-1].total*1.5) action=`Gap besar antara minggu boros vs hemat. Coba ratain dengan alokasi ${idr(avgWk)}/minggu.`;
+        else action=null;
+        list.push({icon:'📆',text:`Minggu ${fmt(peak.mon)}-${fmt(sun)} adalah minggu paling boros: ${peak.count} transaksi, total ${idr(peak.total)} (${pct}% dari periode ini).`,action});
       }
     }
 
-    // 8. Spending acceleration (#4 from list)
+    // ── #6 Spending Acceleration ──────────────────────────────────────
     if(mTx.length>=4){
       const periodStart=new Date(selYear,selMonth-1,25);
-      const midPoint=new Date(periodStart);
-      midPoint.setDate(periodStart.getDate()+15);
+      const midPoint=new Date(periodStart);midPoint.setDate(periodStart.getDate()+15);
       const midStr=midPoint.toISOString().split('T')[0];
       const startStr=periodStart.toISOString().split('T')[0];
       const endStr=new Date(selYear,selMonth,24).toISOString().split('T')[0];
@@ -1664,50 +1661,55 @@ function SpendAnalysis({txs,groups,budgets}){
       if(firstHalf>0&&secondHalf>0){
         const diff=secondHalf-firstHalf;
         const diffPct=Math.abs(Math.round((diff/firstHalf)*100));
-        if(diffPct>=20){
-          if(diff>0){
-            list.push({
-              icon:'🚀',
-              text:`Spending accelerating! 15 hari kedua (${idr(secondHalf)}) lebih boros ${diffPct}% dibanding 15 hari pertama (${idr(firstHalf)}).`,
-              action:`Kamu cenderung boros menjelang akhir periode. Coba sisihkan budget lebih ketat di pertengahan bulan.`
-            });
-          } else {
-            list.push({
-              icon:'📉',
-              text:`Good control! 15 hari kedua (${idr(secondHalf)}) lebih hemat ${diffPct}% dibanding 15 hari pertama (${idr(firstHalf)}).`,
-              action:null
-            });
-          }
+        let text,action,icon;
+        if(diff>0&&diffPct>=20){
+          icon='🚀';text=`Spending accelerating! 15 hari kedua (${idr(secondHalf)}) lebih boros ${diffPct}% dari 15 hari pertama (${idr(firstHalf)}).`;
+          if(diffPct>60) action=`Pengeluaran meledak di akhir periode. Transfer sisa budget ke rekening terpisah di tanggal 10 agar tidak tergoda.`;
+          else if(diffPct>40) action=`Spending mulai naik di paruh kedua. Set reminder review budget setiap tanggal 10 dan 20.`;
+          else action=`Ada kecenderungan boros di akhir periode. Coba buat weekly micro-budget untuk 2 minggu terakhir.`;
+          list.push({icon,text,action});
+        } else if(diff<0&&diffPct>=20){
+          icon='📉';text=`Good control! 15 hari kedua (${idr(secondHalf)}) lebih hemat ${diffPct}% dari 15 hari pertama (${idr(firstHalf)}).`;
+          action=diffPct>40?`Kontrol bagus di paruh kedua! Terapkan strategi yang sama dari awal periode bulan depan.`:`Spending melambat di akhir — bagus! Pertahankan momentum ini ke bulan depan.`;
+          list.push({icon,text,action});
+        } else if(firstHalf>secondHalf*1.5){
+          list.push({icon:'⚡',text:`Front-loaded spending: 15 hari pertama (${idr(firstHalf)}) jauh lebih besar dari kedua (${idr(secondHalf)}).`,action:`Efek gajian terasa. Langsung transfer 50% take-home ke rekening tabungan di hari gajian untuk proteksi.`});
+        } else {
+          list.push({icon:'⚖️',text:`Distribusi spending sangat merata antara 2 paruh periode (${idr(firstHalf)} vs ${idr(secondHalf)}).`,action:`Ini tanda financial discipline yang bagus — pertahankan dengan envelope method bulan depan.`});
         }
       }
     }
 
-    // 9. Small & frequent vs big & rare (#7 from list)
+    // ── #7 Small & Frequent vs Big & Rare ────────────────────────────
     if(mTx.length>=3){
       const avgAmt=Math.round(total/mTx.length);
       const smallTx=mTx.filter(t=>t.amount<avgAmt);
       const bigTx=mTx.filter(t=>t.amount>=avgAmt*2);
       const smallTotal=smallTx.reduce((s,t)=>s+t.amount,0);
       const bigTotal=bigTx.reduce((s,t)=>s+t.amount,0);
-      if(smallTx.length>mTx.length*0.7){
-        list.push({
-          icon:'🪙',
-          text:`Spending style kamu: banyak transaksi kecil (${smallTx.length} dari ${mTx.length} tx di bawah ${idr(avgAmt)}), total ${idr(smallTotal)}.`,
-          action:`Transaksi kecil yang sering bisa menumpuk. Coba track pengeluaran harian untuk sadar lebih cepat.`
-        });
-      } else if(bigTx.length>0&&bigTotal>total*0.5){
-        list.push({
-          icon:'🐋',
-          text:`Spending style kamu: sedikit tapi besar — ${bigTx.length} transaksi besar (≥${idr(avgAmt*2)}) menyumbang ${Math.round(bigTotal/total*100)}% dari total.`,
-          action:`Fokus kontrol di ${bigTx.length} transaksi besar ini karena dampaknya paling signifikan ke total spending.`
-        });
+      const smallPct=Math.round((smallTx.length/mTx.length)*100);
+      const bigPct=bigTotal>0?Math.round((bigTotal/total)*100):0;
+      let icon,text,action;
+      if(smallPct>80){
+        icon='🪙';text=`Banyak transaksi kecil: ${smallTx.length} dari ${mTx.length} tx di bawah ${idr(avgAmt)}, total ${idr(smallTotal)}.`;
+        action=`Terlalu banyak transaksi kecil menumpuk. Konsolidasikan belanja jadi minimum ${idr(Math.round(avgAmt*0.8))} per trip.`;
+      } else if(smallPct>70){
+        icon='🪙';text=`Spending style: banyak transaksi kecil (${smallPct}% dari total tx di bawah ${idr(avgAmt)}).`;
+        action=`Coba 24-hour rule: tunda semua pembelian di bawah ${idr(avgAmt)} selama 24 jam sebelum jadi.`;
+      } else if(bigTx.length===1&&bigPct>20){
+        icon='🐋';text=`Ada 1 transaksi besar (≥${idr(avgAmt*2)}) menyumbang ${bigPct}% dari total spending.`;
+        action=`Untuk pembelian sebesar ini, selalu bandingkan 3 harga dulu. Impact ke total sangat signifikan.`;
+      } else if(bigTx.length>1&&bigPct>50){
+        icon='🐋';text=`${bigTx.length} transaksi besar (≥${idr(avgAmt*2)}) menyumbang ${bigPct}% dari total.`;
+        action=`Fokus kontrol di ${bigTx.length} transaksi besar ini — impact-nya paling signifikan ke total spending.`;
+      } else if(bigTx.length>0&&bigPct>30){
+        icon='🐋';text=`Spending style: sedikit tapi besar — ${bigTx.length} big tx menyumbang ${bigPct}% total.`;
+        action=`Coba 'cooling off period' 3 hari untuk setiap pembelian >${idr(avgAmt*2)} kecuali kebutuhan terencana.`;
       } else {
-        list.push({
-          icon:'⚖️',
-          text:`Spending style kamu seimbang: mix antara transaksi kecil (${smallTx.length}x) dan besar (${bigTx.length}x). Rata-rata ${idr(avgAmt)}/transaksi.`,
-          action:null
-        });
+        icon='⚖️';text=`Spending style seimbang: mix transaksi kecil (${smallTx.length}x) dan besar (${bigTx.length}x), rata-rata ${idr(avgAmt)}/tx.`;
+        action=`Mix spending sehat! Pertahankan dengan set soft limit maks ${idr(avgAmt*2)}/transaksi kecuali kebutuhan terencana.`;
       }
+      list.push({icon,text,action});
     }
 
     return list;
