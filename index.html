@@ -1534,25 +1534,6 @@ function SpendAnalysis({txs,groups,budgets}){
       list.push({icon:'📊',text:`Belum ada data bulan sebelumnya untuk perbandingan.`,action:null});
     }
 
-    // 2. Top category dominance + action
-    if(slices.length>0){
-      const top=slices[0];
-      const saving50=Math.round(top.amt*0.5);
-      if(top.pct>0.4){
-        list.push({
-          icon:'⚠️',
-          text:`${top.emoji} ${top.name} mendominasi ${(top.pct*100).toFixed(0)}% pengeluaran (${idr(top.amt)}).`,
-          action:`Jika dikurangi 50%, potensi penghematan ${idr(saving50)}/bulan atau ${idr(saving50*12)}/tahun.`
-        });
-      } else {
-        list.push({
-          icon:'📊',
-          text:`Top category: ${top.emoji} ${top.name} sebesar ${idr(top.amt)} (${(top.pct*100).toFixed(0)}% dari total).`,
-          action:`Pengeluaran cukup terdistribusi. Bagus!`
-        });
-      }
-    }
-
     // 3. Budget check + action
     const overBudget=groups.filter(g=>{
       const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
@@ -1597,15 +1578,6 @@ function SpendAnalysis({txs,groups,budgets}){
         action:`Jika frekuensinya dikurangi setengah, potensi hemat ${idr(saving)}/bulan atau ${idr(saving*12)}/tahun.`
       });
     }
-
-    // 5. Daily average + action
-    const avgDay=Math.round(total/30);
-    const prevAvgDay=prevTotal?Math.round(prevTotal/30):0;
-    list.push({
-      icon:'📅',
-      text:`Rata-rata harian ${idr(avgDay)}${prevAvgDay?` (bulan lalu: ${idr(prevAvgDay)})`:''}.`,
-      action:avgDay>300000?`Target turunkan ke ${idr(Math.round(avgDay*0.8))}/hari untuk hemat ${idr(Math.round(avgDay*0.2*30))}/bulan.`:null
-    });
 
     // 6. Spending pattern - detect day-of-week behavior
     if(mTx.length>=3){
