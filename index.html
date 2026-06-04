@@ -1644,15 +1644,18 @@ function SpendAnalysis({txs,groups,budgets}){
       const recurValueNaik=prevTx.length>0&&recurPct>30;
       let text,action;
       text=`"${top.desc}" paling sering: ${top.count}x = ${idr(top.total)}.${noteExtra}`;
-      if(newRecurring.length>0) action=`Ada ${newRecurring.length} item recurring baru. Setiap langganan baru itu komitmen jangka panjang. Tanya ke diri sendiri: 6 bulan lagi masih akan dipakai? Kalau ragu, mending jangan dulu.`;
-      else if(goneRecurring.length>0) action=`Berhasil eliminasi ${goneRecurring.length} recurring vs bulan lalu! Hitung total penghematan tahunan dan alokasikan ke tujuan finansial.`;
-      else if(recurPct>50) action=`Pengeluaran rutin mendominasi ${recurPct}% total. Audit semua — cancel minimal 1 yang jarang dipakai bulan ini.`;
-      else if(recurPct>30) action=`Recurring cukup besar (${recurPct}% total). Cari alternatif lebih murah atau paket annual untuk "${top.desc}" sebagai item terbesar.`;
-      else if(recurring.length>5) action=`Ada ${recurring.length} item recurring. Buat spreadsheet audit semua dan evaluasi mana yang masih worth it.`;
-      else if(top.count>=5) action=`"${top.desc}" muncul ${top.count}x — cek apakah frekuensi ini memang kebutuhan atau habit tanpa sadar.`;
-      else if(topCatRecur) action=`Semua recurring terkonsentrasi di ${topCatRecur.name}. Evaluasi apakah semua ini memang esensial untuk kategori ini.`;
-      else if(recurPct<15) action=`Recurring terkontrol bagus (${recurPct}% total). Pastikan semua masih aktif dipakai — jangan bayar sesuatu yang sudah tidak kamu pakai — itu sama aja buang uang.`;
-      else action=`Jika frekuensi "${top.desc}" dikurangi setengah, potensi hemat ${idr(saving)}/bulan atau ${idr(saving*12)}/tahun.`;
+      // Action focused on the top recurring item itself
+      const avgPerOccur=Math.round(top.total/top.count);
+      const projYear=top.total*12;
+      if(top.count>=5) action=`"${top.desc}" muncul ${top.count}x bulan ini dengan rata-rata ${idr(avgPerOccur)}/kali. Cek apakah ini memang kebutuhan atau sudah jadi habit tanpa sadar.`;
+      else if(top.count>=3&&top.total>total*0.2) action=`"${top.desc}" 3x dan menyumbang lebih dari 20% total spending. Kalau dikurangi jadi 1x/bulan, hemat ${idr(top.total-avgPerOccur)}/bulan.`;
+      else if(top.count>=3&&avgPerOccur>50000) action=`"${top.desc}" rutin ${top.count}x = ${idr(top.total)}. Kalau ini terus tiap bulan, setahun bisa ${idr(projYear)} — worth it ga?`;
+      else if(top.count>=3&&avgPerOccur<=50000) action=`"${top.desc}" kelihatannya kecil per transaksi (${idr(avgPerOccur)}), tapi ${top.count}x/bulan = ${idr(top.total)}/bulan atau ${idr(projYear)}/tahun kalau terus.`;
+      else if(recurPct>50) action=`"${top.desc}" jadi bagian dari recurring yang mendominasi ${recurPct}% total spending. Audit semua item rutin — cancel yang jarang kepake.`;
+      else if(recurPct>30) action=`"${top.desc}" adalah recurring terbesar (${Math.round(top.total/recurringTotal*100)}% dari total recurring). Cari alternatif lebih murah atau kurangi frekuensinya.`;
+      else if(newRecurring.length>0){const names=newRecurring.slice(0,3).map(r=>`"${r.desc}"`).join(', ')+(newRecurring.length>3?` +${newRecurring.length-3} lainnya`:'');action=`"${top.desc}" dan beberapa item lain (${names}) adalah recurring baru bulan ini — pastikan ini memang direncanakan, bukan tiba-tiba jadi kebiasaan.`;}
+      else if(goneRecurring.length>0) action=`"${top.desc}" masih rutin, tapi kamu berhasil stop ${goneRecurring.length} recurring lain vs bulan lalu. Lanjutin progress ini!`;
+      else action=`Kalau "${top.desc}" dikurangi setengah frekuensinya, bisa hemat ${idr(saving)}/bulan atau ${idr(saving*12)}/tahun.`;
       list.push({icon:'🔄',text,action});
     } else {
       if(prevTx.length>0&&Object.keys((() => {const m={};prevTx.forEach(t=>{const k=t.description.toLowerCase().trim();m[k]=(m[k]||0)+1});return m})()).filter(k=>Object.assign({},(() => {const m={};prevTx.forEach(t=>{const k=t.description.toLowerCase().trim();m[k]=(m[k]||0)+1});return m})())[k]>=2).length>0){
