@@ -721,14 +721,18 @@ function History({txs,groups,onDelete,onEdit}){
   const [fg,setFg]=useState('all');
   const [q,setQ]=useState('');
   const [dir,setDir]=useState('desc');
+  const [dateFrom,setDateFrom]=useState('');
+  const [dateTo,setDateTo]=useState('');
 
   const list=useMemo(()=>{
     let a=[...txs];
     if(fg!=='all')a=a.filter(t=>t.group_id===fg);
     if(q)a=a.filter(t=>t.description.toLowerCase().includes(q.toLowerCase()));
+    if(dateFrom)a=a.filter(t=>t.date>=dateFrom);
+    if(dateTo)a=a.filter(t=>t.date<=dateTo);
     a.sort((a,b)=>dir==='desc'?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
     return a;
-  },[txs,fg,q,dir]);
+  },[txs,fg,q,dir,dateFrom,dateTo]);
 
   // Group transactions by ISO week (Mon-Sun)
   const getWeekKey = (dateStr) => {
@@ -764,7 +768,13 @@ function History({txs,groups,onDelete,onEdit}){
         <div><div className="page-title">History</div><div className="page-subtitle">{list.length} records · {idr(list.reduce((s,t)=>s+t.amount,0))}</div></div>
         <div className="icon-btn" onClick={()=>setDir(d=>d==='desc'?'asc':'desc')}><Ic n="filt" s={18}/></div>
       </div>
-      <div style={{padding:'0 20px',marginBottom:12}}><input className="fi" placeholder="Search..." value={q} onChange={e=>setQ(e.target.value)}/></div>
+      <div style={{padding:'0 20px',marginBottom:8}}><input className="fi" placeholder="Search..." value={q} onChange={e=>setQ(e.target.value)}/></div>
+      <div style={{display:'flex',gap:8,padding:'0 20px',marginBottom:12,alignItems:'center'}}>
+        <input type="date" className="fi" style={{flex:1,padding:'9px 10px',fontSize:12}} value={dateFrom} onChange={e=>setDateFrom(e.target.value)}/>
+        <span style={{color:'var(--t3)',fontSize:12,flexShrink:0}}>-</span>
+        <input type="date" className="fi" style={{flex:1,padding:'9px 10px',fontSize:12}} value={dateTo} onChange={e=>setDateTo(e.target.value)}/>
+        {(dateFrom||dateTo)&&<button onClick={()=>{setDateFrom('');setDateTo('')}} style={{background:'var(--bg3)',border:'.5px solid var(--b1)',borderRadius:8,padding:'9px 12px',fontSize:12,color:'var(--t2)',cursor:'pointer',flexShrink:0}}>Reset</button>}
+      </div>
       <div className="pills">
         <div className={`chip ${fg==='all'?'on':''}`} onClick={()=>setFg('all')}>All</div>
         {groups.map(g=><div key={g.id} className={`chip ${fg===g.id?'on':''}`} onClick={()=>setFg(g.id)}>{g.emoji} {g.name}</div>)}
