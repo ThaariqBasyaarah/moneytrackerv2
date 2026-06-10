@@ -25,8 +25,8 @@
       --r:16px;--rs:10px;
       --fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
     }
-    html,body{background:var(--bg);color:var(--t1);font-family:var(--fb);height:100%;overflow:hidden}
-    #root{height:100vh;display:flex;flex-direction:column;max-width:430px;margin:0 auto;background:var(--bg);overflow:hidden;position:relative}
+    html,body{background:var(--bg);color:var(--t1);font-family:var(--fb);height:100%;overflow:hidden;margin:0;padding:0}
+    #root{height:100vh;height:100dvh;display:flex;flex-direction:column;max-width:430px;margin:0 auto;background:var(--bg);overflow:hidden;position:relative}
 
     /* DESKTOP */
     @media(min-width:769px){
@@ -61,13 +61,13 @@
     .sb-spacer{flex:1}
 
     /* BOTTOM NAV (mobile) */
-    .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(10,10,10,.92);backdrop-filter:blur(20px);border-top:.5px solid var(--b1);display:flex;align-items:center;justify-content:space-around;padding:10px 0 22px;padding-bottom:max(22px,env(safe-area-inset-bottom));z-index:100}
+    .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(10,10,10,.92);backdrop-filter:blur(20px);border-top:.5px solid var(--b1);display:flex;align-items:center;justify-content:space-around;padding-top:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:100}
     .nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 10px;flex:1}
     .nav-item svg{width:22px;height:22px;fill:none;stroke:var(--t3);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
     .nav-item span{font-size:10px;color:var(--t3);transition:color .2s}
     .nav-item.active svg{stroke:var(--a)}
     .nav-item.active span{color:var(--a);font-weight:500}
-    .nav-fab{width:52px;height:52px;border-radius:50%;background:var(--a);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(200,245,96,.3);flex-shrink:0;margin-bottom:4px}
+    .nav-fab{width:52px;height:52px;border-radius:50%;background:var(--a);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(200,245,96,.3);flex-shrink:0}
     .nav-fab svg{fill:none;stroke:#0a0a0a;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;width:24px;height:24px}
 
     /* SCROLL */
@@ -790,7 +790,7 @@ function History({txs,groups,subCats,onDelete,onEdit}){
   const subsForFg=fg!=='all'?subCats.filter(s=>s.group_id===fg):[];
 
   return(
-    <div className="page-scroll" style={{paddingBottom:'max(180px,calc(160px + env(safe-area-inset-bottom)))'}}>
+    <div className="page-scroll" style={{paddingBottom:'calc(140px + env(safe-area-inset-bottom,0px))'}}>
       <div className="page-header">
         <div><div className="page-title">History</div><div className="page-subtitle">{list.length} records · {idr(filteredTotal)}</div></div>
         <div className="icon-btn" onClick={()=>setDir(d=>d==='desc'?'asc':'desc')}><Ic n="filt" s={18}/></div>
@@ -846,7 +846,7 @@ function History({txs,groups,subCats,onDelete,onEdit}){
       </div>
 
       {/* Bottom floating search + filter bar */}
-      <div style={{position:'fixed',left:0,right:0,bottom:'calc(72px + env(safe-area-inset-bottom))',padding:'0 16px',zIndex:40,pointerEvents:'none'}}>
+      <div style={{position:'fixed',left:0,right:0,bottom:'calc(68px + env(safe-area-inset-bottom,0px))',padding:'0 16px',zIndex:40,pointerEvents:'none'}}>
         <div style={{display:'flex',gap:8,maxWidth:540,margin:'0 auto',pointerEvents:'auto'}}>
           <input className="fi" placeholder="Search transactions..." value={q} onChange={e=>setQ(e.target.value)}
             style={{flex:1,boxShadow:'0 4px 20px rgba(0,0,0,0.4)',background:'var(--bg2)',border:'.5px solid var(--b2)'}}/>
