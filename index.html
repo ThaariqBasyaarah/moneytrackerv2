@@ -228,6 +228,34 @@ const setSession=u=>localStorage.setItem('ts',JSON.stringify(u));
 const clearSession=()=>localStorage.removeItem('ts');
 const hash=p=>btoa(encodeURIComponent(p+'trackr_salt_2025'));
 
+const getFinanceCoach=({txs,budgets,month,year,prevTotal=0})=>{
+  const dayMs=86400000;
+  const start=new Date(year,month-1,25);
+  const end=new Date(year,month,24);
+  const startStr=start.toISOString().split('T')[0];
+  const endStr=end.toISOString().split('T')[0];
+  const today=new Date();
+  const todayOnly=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  const daysInPeriod=Math.round((end-start)/dayMs)+1;
+  const rawPassed=Math.floor((todayOnly-start)/dayMs)+1;
+  const daysPassed=Math.min(Math.max(rawPassed,1),daysInPeriod);
+  const daysLeft=Math.max(daysInPeriod-daysPassed,0);
+  const daysLeftInclToday=Math.max(daysInPeriod-daysPassed+1,1);
+  const isCurrent=todayOnly>=start&&todayOnly<=end;
+  const isFuture=todayOnly<start;
+  const periodTx=txs.filter(t=>t.date>=startStr&&t.date<=endStr);
+  const total=periodTx.reduce((s,t)=>s+t.amount,0);
+  const budgetTarget=budgets.filter(b=>b.type==='monthly').reduce((s,b)=>s+(b.amount||0),0);
+  const target=budgetTarget||prevTotal||0;
+  const pace=isCurrent&&daysPassed>0?total/daysPassed:0;
+  const forecast=isCurrent?Math.round(pace*daysInPeriod):total;
+  const remaining=target?target-total:0;
+  const safeToday=target?Math.max(0,Math.floor(remaining/daysLeftInclToday)):0;
+  const neededCut=target&&isCurrent&&forecast>target?Math.ceil((forecast-target)/daysLeftInclToday):0;
+  const status=!target?'no-target':isFuture?'future':!isCurrent?'closed':forecast>target?'over':forecast>target*.9?'tight':'safe';
+  return {start,end,startStr,endStr,daysInPeriod,daysPassed,daysLeft,daysLeftInclToday,isCurrent,isFuture,total,target,budgetTarget,forecast,remaining,safeToday,neededCut,status};
+};
+
 // ── SVG ICONS ─────────────────────────────────────────────────────────
 const Ic=({n,s=22,w=1.6,c})=>{
   const P={
@@ -540,6 +568,12 @@ function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
   const wDays=useMemo(()=>{const a=[];for(let i=6;i>=0;i--){const d=new Date(wt);d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];const tot=txs.filter(t=>t.date===ds).reduce((s,t)=>s+t.amount,0);a.push({date:ds,tot,label:dayN(ds),isToday:ds===tod()})}return a},[txs,wt]);
   const maxD=Math.max(...wDays.map(d=>d.tot),1);
   const recent=useMemo(()=>{let a=[...txs].sort((a,b)=>b.date.localeCompare(a.date));if(fg!=='all')a=a.filter(t=>t.group_id===fg);return a.slice(0,lim)},[txs,fg,lim]);
+  const prevTotal=useMemo(()=>{
+    const s=new Date(yr,mon-2,25).toISOString().split('T')[0];
+    const e=new Date(yr,mon-1,24).toISOString().split('T')[0];
+    return txs.filter(t=>t.date>=s&&t.date<=e).reduce((sum,t)=>sum+t.amount,0);
+  },[txs,mon,yr]);
+  const coach=useMemo(()=>getFinanceCoach({txs,budgets,month:mon,year:yr,prevTotal}),[txs,budgets,mon,yr,prevTotal]);
 
   return(
     <div className="page-scroll">
@@ -559,11 +593,25 @@ function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
       </div>
 
       <div className="hero-card fade">
-        <div className="hero-label">TOTAL SPENT - {MN[mon].toUpperCase()}</div>
-        <div className="hero-amt"><span className="hero-cur">Rp</span>{mTotal.toLocaleString('id-ID')}</div>
-        <div className="hero-sub">{mTx.length} tx | {new Date(yr,mon-1,25).toLocaleDateString('id-ID',{day:'numeric',month:'short'})} - {new Date(yr,mon,24).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div>
-
+        <div className="hero-label">{coach.budgetTarget?'SAFE TO SPEND TODAY':'TOTAL SPENT - '+MN[mon].toUpperCase()}</div>
+        <div className="hero-amt"><span className="hero-cur">Rp</span>{(coach.budgetTarget?coach.safeToday:mTotal).toLocaleString('id-ID')}</div>
+        <div className="hero-sub">
+          {coach.budgetTarget
+            ? `${coach.daysLeftInclToday} hari tersisa | spent ${idr(mTotal)} dari ${idr(coach.target)}`
+            : `${mTx.length} tx | set monthly budget buat aktifin safe-to-spend`}
+        </div>
       </div>
+
+      {coach.status==='over'&&(
+        <div className="section">
+          <div className="card" style={{borderColor:'rgba(255,77,77,.35)',background:'var(--redbg)',padding:16}}>
+            <div style={{fontSize:12,color:'var(--red)',fontWeight:700,marginBottom:6}}>Forecast warning</div>
+            <div style={{fontSize:14,lineHeight:1.5,color:'var(--t1)'}}>
+              Pace sekarang bisa tembus {idr(coach.forecast)}. Rem harian sekitar {idr(coach.neededCut)} biar balik ke target.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="section">
         <div className="stats-grid">
@@ -1632,6 +1680,7 @@ function SpendAnalysis({txs,groups,budgets}){
     return txs.filter(t=>t.date>=s&&t.date<=e);
   },[txs,selMonth,selYear]);
   const prevTotal=useMemo(()=>prevTx.reduce((s,t)=>s+t.amount,0),[prevTx]);
+  const coach=useMemo(()=>getFinanceCoach({txs,budgets,month:selMonth,year:selYear,prevTotal}),[txs,budgets,selMonth,selYear,prevTotal]);
 
   // 3-month history for trend detection
   const prev2Tx=useMemo(()=>{
@@ -2004,6 +2053,44 @@ function SpendAnalysis({txs,groups,budgets}){
         <div className="section"><div className="card" style={{textAlign:'center',padding:32,color:'var(--t3)',fontSize:13}}>No transactions this period</div></div>
       ):(
         <>
+          {/* Spending Forecast */}
+          <div className="section">
+            <div className="section-label">Spending Forecast</div>
+            <div className="card" style={{borderColor:coach.status==='over'?'rgba(255,77,77,.35)':coach.status==='tight'?'rgba(255,179,71,.35)':'var(--b1)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start',marginBottom:14}}>
+                <div>
+                  <div style={{fontSize:12,color:'var(--t2)',marginBottom:4}}>Projected end-period</div>
+                  <div style={{fontFamily:'var(--fh)',fontSize:26,fontWeight:800,color:coach.status==='over'?'var(--red)':coach.status==='tight'?'var(--amber)':'var(--a)'}}>{idr(coach.forecast)}</div>
+                </div>
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontSize:12,color:'var(--t2)',marginBottom:4}}>Target</div>
+                  <div style={{fontFamily:'var(--fh)',fontSize:18,fontWeight:700}}>{coach.target?idr(coach.target):'No target'}</div>
+                </div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                <div style={{background:'var(--bg3)',borderRadius:10,padding:10}}>
+                  <div style={{fontSize:11,color:'var(--t3)',marginBottom:4}}>Safe/day</div>
+                  <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:700,color:'var(--a)'}}>{coach.target?idr(coach.safeToday):'-'}</div>
+                </div>
+                <div style={{background:'var(--bg3)',borderRadius:10,padding:10}}>
+                  <div style={{fontSize:11,color:'var(--t3)',marginBottom:4}}>Days left</div>
+                  <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:700}}>{coach.daysLeftInclToday}</div>
+                </div>
+              </div>
+              <div style={{fontSize:13,lineHeight:1.5,color:'var(--t2)'}}>
+                {coach.status==='no-target'
+                  ? 'Belum ada budget bulanan. Set budget dulu biar app bisa ngasih batas harian yang bener.'
+                  : coach.status==='over'
+                    ? `Kalau pace begini terus, bakal lewat target ${idr(coach.forecast-coach.target)}. Mulai hari ini turunin sekitar ${idr(coach.neededCut)}/hari.`
+                    : coach.status==='tight'
+                      ? 'Masih bisa aman, tapi margin-nya tipis. Jangan habisin sisa budget cuma karena kelihatan masih ada.'
+                      : coach.status==='closed'
+                        ? 'Period ini sudah selesai. Pakai angka ini sebagai baseline buat period berikutnya.'
+                        : `Pace masih aman. Sisa ruang sampai target sekitar ${idr(Math.max(coach.remaining,0))}.`}
+              </div>
+            </div>
+          </div>
+
           {/* Spending Insights */}
           <div className="section">
             <div className="fxb" style={{marginBottom:12}}>
