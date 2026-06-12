@@ -2037,24 +2037,22 @@ function SpendAnalysis({txs,groups,budgets}){
           <div className="section">
             <div className="section-label">Spending Forecast</div>
             <div className="card" style={{borderColor:coach.status==='over'?'rgba(255,77,77,.35)':coach.status==='tight'?'rgba(255,179,71,.35)':'var(--b1)'}}>
-              <div style={{display:'grid',gridTemplateColumns:'minmax(0,1.35fr) minmax(96px,.9fr)',gap:12,alignItems:'start',marginBottom:14}}>
-                <div style={{minWidth:0}}>
-                  <div style={{fontSize:12,color:'var(--t2)',marginBottom:4}}>Projected end-period</div>
-                  <div style={{fontFamily:'var(--fh)',fontSize:24,fontWeight:800,lineHeight:1.08,color:coach.status==='over'?'var(--red)':coach.status==='tight'?'var(--amber)':'var(--a)',overflowWrap:'anywhere'}}>{idr(coach.forecast)}</div>
-                </div>
-                <div style={{minWidth:0,textAlign:'right'}}>
-                  <div style={{fontSize:12,color:'var(--t2)',marginBottom:4}}>Target</div>
-                  <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:700,lineHeight:1.12,overflowWrap:'anywhere'}}>{coach.target?idr(coach.target):'No target'}</div>
-                </div>
+              <div style={{marginBottom:14,minWidth:0}}>
+                <div style={{fontSize:12,color:'var(--t2)',marginBottom:4}}>Projected end-period</div>
+                <div style={{fontFamily:'var(--fh)',fontSize:25,fontWeight:800,lineHeight:1.05,color:coach.status==='over'?'var(--red)':coach.status==='tight'?'var(--amber)':'var(--a)',whiteSpace:'nowrap',letterSpacing:0}}>{idr(coach.forecast)}</div>
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:10,marginBottom:12}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:8,marginBottom:12}}>
+                <div style={{background:'var(--bg3)',borderRadius:10,padding:10,minWidth:0}}>
+                  <div style={{fontSize:11,color:'var(--t3)',marginBottom:4}}>Target</div>
+                  <div style={{fontFamily:'var(--fh)',fontSize:14,fontWeight:700,lineHeight:1.12,overflowWrap:'anywhere'}}>{coach.target?idr(coach.target):'No target'}</div>
+                </div>
                 <div style={{background:'var(--bg3)',borderRadius:10,padding:10,minWidth:0}}>
                   <div style={{fontSize:11,color:'var(--t3)',marginBottom:4}}>Safe/day</div>
-                  <div style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,lineHeight:1.12,color:'var(--a)',overflowWrap:'anywhere'}}>{coach.target?idr(coach.safeToday):'-'}</div>
+                  <div style={{fontFamily:'var(--fh)',fontSize:14,fontWeight:700,lineHeight:1.12,color:'var(--a)',overflowWrap:'anywhere'}}>{coach.target?idr(coach.safeToday):'-'}</div>
                 </div>
                 <div style={{background:'var(--bg3)',borderRadius:10,padding:10,minWidth:0}}>
                   <div style={{fontSize:11,color:'var(--t3)',marginBottom:4}}>Days left</div>
-                  <div style={{fontFamily:'var(--fh)',fontSize:16,fontWeight:700}}>{coach.daysLeftInclToday}</div>
+                  <div style={{fontFamily:'var(--fh)',fontSize:14,fontWeight:700}}>{coach.daysLeftInclToday}</div>
                 </div>
               </div>
               <div style={{fontSize:13,lineHeight:1.5,color:'var(--t2)'}}>
