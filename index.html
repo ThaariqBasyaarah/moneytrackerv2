@@ -256,6 +256,44 @@ const getFinanceCoach=({txs,budgets,month,year,prevTotal=0})=>{
   return {start,end,startStr,endStr,daysInPeriod,daysPassed,daysLeft,daysLeftInclToday,isCurrent,isFuture,total,target,budgetTarget,forecast,remaining,safeToday,neededCut,status};
 };
 
+const getCategoryBrakes=({txs,groups,budgets,month,year})=>{
+  const coach=getFinanceCoach({txs,budgets,month,year});
+  const monthly=budgets.filter(b=>b.type==='monthly'&&b.amount>0);
+  return monthly.map(b=>{
+    const g=groups.find(x=>x.id===b.group_id);
+    if(!g)return null;
+    const catTx=txs.filter(t=>t.group_id===g.id&&t.date>=coach.startStr&&t.date<=coach.endStr);
+    const spent=catTx.reduce((s,t)=>s+t.amount,0);
+    const budget=b.amount||0;
+    const remaining=budget-spent;
+    const usage=budget?spent/budget:0;
+    const pace=coach.isCurrent&&coach.daysPassed>0?spent/coach.daysPassed:0;
+    const forecast=coach.isCurrent?Math.round(pace*coach.daysInPeriod):spent;
+    const forecastOver=forecast-budget;
+    const safePerDay=Math.max(0,Math.floor(remaining/coach.daysLeftInclToday));
+    const avgTx=catTx.length?Math.round(spent/catTx.length):0;
+    let status='safe';
+    if(spent>budget)status='over';
+    else if(forecast>budget||usage>=.8)status='brake';
+    else if(usage>=.65||(avgTx>0&&safePerDay<avgTx&&remaining>0))status='tight';
+    const severity={over:4,brake:3,tight:2,safe:1}[status];
+    const score=severity*1000+Math.round(usage*300)+(forecastOver>0?Math.round(forecastOver/10000):0)+(coach.daysLeft>5&&status!=='safe'?80:0);
+    const limitText=status==='over'
+      ? `Over ${idr(Math.abs(remaining))}. Stop dulu kecuali urgent.`
+      : `Limit aman ${idr(safePerDay)}/hari sampai period reset.`;
+    const reason=status==='over'
+      ? `${g.name} sudah lewat budget.`
+      : forecast>budget
+        ? `Pace sekarang bisa over ${idr(forecastOver)}.`
+        : usage>=.8
+          ? `${Math.round(usage*100)}% budget sudah kepake.`
+          : status==='tight'
+            ? `Sisa ruang mulai sempit.`
+            : `Masih on track.`;
+    return {group:g,budget,spent,remaining,usage,forecast,forecastOver,safePerDay,avgTx,status,score,reason,limitText,txCount:catTx.length};
+  }).filter(Boolean).sort((a,b)=>b.score-a.score);
+};
+
 // ── SVG ICONS ─────────────────────────────────────────────────────────
 const Ic=({n,s=22,w=1.6,c})=>{
   const P={
@@ -568,6 +606,7 @@ function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
   const wDays=useMemo(()=>{const a=[];for(let i=6;i>=0;i--){const d=new Date(wt);d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];const tot=txs.filter(t=>t.date===ds).reduce((s,t)=>s+t.amount,0);a.push({date:ds,tot,label:dayN(ds),isToday:ds===tod()})}return a},[txs,wt]);
   const maxD=Math.max(...wDays.map(d=>d.tot),1);
   const recent=useMemo(()=>{let a=[...txs].sort((a,b)=>b.date.localeCompare(a.date));if(fg!=='all')a=a.filter(t=>t.group_id===fg);return a.slice(0,lim)},[txs,fg,lim]);
+  const brakeAlerts=useMemo(()=>getCategoryBrakes({txs,groups,budgets,month:mon,year:yr}).filter(x=>x.status!=='safe').slice(0,3),[txs,groups,budgets,mon,yr]);
 
   return(
     <div className="page-scroll">
@@ -601,6 +640,33 @@ function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
           <div className="stat-card"><div className="stat-label">Active Cat.</div><div className="stat-value">{Object.keys(byG).length}</div><div className="stat-sub">this month</div></div>
         </div>
       </div>
+
+      {brakeAlerts.length>0&&(
+        <div className="section">
+          <div className="section-label">Category Brake</div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {brakeAlerts.map(x=>{
+              const col=x.status==='over'?'var(--red)':x.status==='brake'?'var(--amber)':'var(--a)';
+              return(
+                <div key={x.group.id} className="card" style={{padding:14,borderColor:x.status==='over'?'rgba(255,77,77,.35)':x.status==='brake'?'rgba(255,179,71,.35)':'var(--b1)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                    <div style={{width:34,height:34,borderRadius:10,background:`${x.group.color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>{x.group.emoji}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.group.name}</div>
+                      <div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{Math.round(x.usage*100)}% used | {idr(Math.max(x.remaining,0))} left</div>
+                    </div>
+                    <div style={{fontSize:11,fontWeight:700,color:col,textTransform:'uppercase'}}>{x.status}</div>
+                  </div>
+                  <div className="prog-track" style={{height:5,marginBottom:8}}>
+                    <div className="prog-fill" style={{width:`${Math.min(x.usage*100,100)}%`,background:col}}/>
+                  </div>
+                  <div style={{fontSize:13,lineHeight:1.45,color:'var(--t2)'}}>{x.reason} <span style={{color:col,fontWeight:700}}>{x.limitText}</span></div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="section">
         <div className="fxb" style={{marginBottom:12}}><div className="section-label" style={{margin:0}}>Weekly Trend</div></div>
@@ -1661,6 +1727,7 @@ function SpendAnalysis({txs,groups,budgets}){
   },[txs,selMonth,selYear]);
   const prevTotal=useMemo(()=>prevTx.reduce((s,t)=>s+t.amount,0),[prevTx]);
   const coach=useMemo(()=>getFinanceCoach({txs,budgets,month:selMonth,year:selYear,prevTotal}),[txs,budgets,selMonth,selYear,prevTotal]);
+  const categoryBrakes=useMemo(()=>getCategoryBrakes({txs,groups,budgets,month:selMonth,year:selYear}),[txs,groups,budgets,selMonth,selYear]);
 
   // 3-month history for trend detection
   const prev2Tx=useMemo(()=>{
@@ -2068,6 +2135,48 @@ function SpendAnalysis({txs,groups,budgets}){
               </div>
             </div>
           </div>
+
+          {/* Category Brake Detail */}
+          {categoryBrakes.length>0&&(
+            <div className="section">
+              <div className="section-label">Category Brake Detail</div>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {categoryBrakes.map(x=>{
+                  const col=x.status==='over'?'var(--red)':x.status==='brake'?'var(--amber)':x.status==='tight'?'var(--a)':'var(--t2)';
+                  return(
+                    <div key={x.group.id} className="card" style={{padding:14}}>
+                      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                        <div style={{width:36,height:36,borderRadius:10,background:`${x.group.color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>{x.group.emoji}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:14,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.group.name}</div>
+                          <div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{x.txCount} tx | forecast {idr(x.forecast)}</div>
+                        </div>
+                        <div style={{fontSize:11,fontWeight:800,color:col,textTransform:'uppercase'}}>{x.status}</div>
+                      </div>
+                      <div className="prog-track" style={{height:5,marginBottom:10}}>
+                        <div className="prog-fill" style={{width:`${Math.min(x.usage*100,100)}%`,background:col}}/>
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:8,marginBottom:10}}>
+                        <div style={{background:'var(--bg3)',borderRadius:10,padding:9,minWidth:0}}>
+                          <div style={{fontSize:10,color:'var(--t3)',marginBottom:4}}>Spent</div>
+                          <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,overflowWrap:'anywhere'}}>{idr(x.spent)}</div>
+                        </div>
+                        <div style={{background:'var(--bg3)',borderRadius:10,padding:9,minWidth:0}}>
+                          <div style={{fontSize:10,color:'var(--t3)',marginBottom:4}}>Budget</div>
+                          <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,overflowWrap:'anywhere'}}>{idr(x.budget)}</div>
+                        </div>
+                        <div style={{background:'var(--bg3)',borderRadius:10,padding:9,minWidth:0}}>
+                          <div style={{fontSize:10,color:'var(--t3)',marginBottom:4}}>Limit/day</div>
+                          <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,color:col,overflowWrap:'anywhere'}}>{idr(x.safePerDay)}</div>
+                        </div>
+                      </div>
+                      <div style={{fontSize:13,lineHeight:1.45,color:'var(--t2)'}}>{x.reason} <span style={{color:col,fontWeight:700}}>{x.limitText}</span></div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Spending Insights */}
           <div className="section">
