@@ -633,11 +633,26 @@ function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
       </div>
 
       <div className="section">
+        <div className="fxb" style={{marginBottom:10}}><div className="section-label" style={{margin:0}}>Category Breakdown</div></div>
         <div className="stats-grid">
-          <div className="stat-card"><div className="stat-label">This Week</div><div className="stat-value ac">Rp {Math.round(wTotal/1000)}K</div><div className="stat-sub">{wTx.length} tx</div></div>
-          <div className="stat-card"><div className="stat-label">Avg/Day</div><div className="stat-value">Rp {Math.round(mTotal/30/1000)}K</div><div className="stat-sub">this month</div></div>
-          <div className="stat-card"><div className="stat-label">Top Category</div><div className="stat-value" style={{fontSize:13}}>{(()=>{const top=Object.entries(byG).sort((a,b)=>b[1]-a[1])[0];if(!top)return'-';const g=groups.find(x=>x.id===top[0]);return g?`${g.emoji} ${g.name}`:'-'})()}</div></div>
-          <div className="stat-card"><div className="stat-label">Active Cat.</div><div className="stat-value">{Object.keys(byG).length}</div><div className="stat-sub">this month</div></div>
+          {(()=>{
+            const top4=Object.entries(byG).sort((a,b)=>b[1]-a[1]).slice(0,4);
+            if(top4.length===0)return <div className="empty" style={{gridColumn:'1 / -1',padding:'20px 0'}}><div className="empty-icon">📊</div><div>No spending yet this month</div></div>;
+            return top4.map(([gid,amt])=>{
+              const g=groups.find(x=>x.id===gid);
+              const pct=mTotal?Math.round((amt/mTotal)*100):0;
+              return(
+                <div key={gid} className="stat-card">
+                  <div className="stat-label" style={{display:'flex',alignItems:'center',gap:6}}>
+                    <span style={{fontSize:14}}>{g?.emoji||'💰'}</span>
+                    <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g?.name||'Other'}</span>
+                  </div>
+                  <div className="stat-value" style={{color:g?.color||'var(--t1)'}}>Rp {Math.round(amt/1000)}K</div>
+                  <div className="stat-sub">{pct}% of total</div>
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
 
