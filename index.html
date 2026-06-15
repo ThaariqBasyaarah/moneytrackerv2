@@ -633,42 +633,30 @@ const Dashboard=React.memo(function Dashboard({txs,groups,budgets,sources,onRefr
 
       </div>
 
-      <div className="section">
-        <div className="fxb" style={{marginBottom:10}}><div className="section-label" style={{margin:0}}>Category Breakdown</div></div>
-        <div className="stats-grid">
-          {(()=>{
-            // Top 4 categories by spend this month, with budget brake status if available
-            const top4=Object.entries(byG).sort((a,b)=>b[1]-a[1]).slice(0,4);
-            const slots=top4.map(([gid,amt])=>{
-              const g=groups.find(x=>x.id===gid);
-              const stat=catStatusAll.find(x=>x.group.id===gid);
-              return stat?{...stat,group:g,spent:amt}:{group:g,spent:amt,status:'safe',usage:0,budget:0};
-            });
-            if(slots.length===0)return <div className="empty" style={{gridColumn:'1 / -1',padding:'20px 0'}}><div className="empty-icon">📊</div><div>No spending yet this month</div></div>;
-            return slots.map(x=>{
-              const g=x.group;if(!g)return null;
-              const col=x.status==='over'?'var(--red)':x.status==='brake'?'var(--amber)':x.status==='tight'?'var(--amber)':'var(--t1)';
-              const hasBudget=x.budget>0;
-              return(
-                <div key={g.id} className="stat-card" style={{borderColor:x.status==='over'?'rgba(255,77,77,.35)':x.status==='brake'?'rgba(255,179,71,.35)':'var(--b1)'}}>
-                  <div className="stat-label" style={{display:'flex',alignItems:'center',gap:6}}>
-                    <span style={{fontSize:14}}>{g.emoji||'💰'}</span>
-                    <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name}</span>
-                  </div>
-                  <div className="stat-value" style={{color:hasBudget?col:g.color||'var(--t1)'}}>Rp {Math.round(x.spent/1000)}K</div>
-                  {hasBudget?(
-                    <div className="stat-sub" style={{color:col,fontWeight:x.status==='over'?700:400}}>
-                      {x.status==='over'?`Over ${Math.round(x.usage*100)}%`:`${Math.round(x.usage*100)}% of budget`}
+      {(()=>{
+        const overCats=catStatusAll.filter(x=>x.status==='over').slice(0,4);
+        if(overCats.length===0)return null;
+        return(
+          <div className="section">
+            <div className="fxb" style={{marginBottom:10}}><div className="section-label" style={{margin:0,color:'var(--red)'}}>⚠️ Over Budget</div></div>
+            <div className="stats-grid">
+              {overCats.map(x=>{
+                const g=x.group;
+                return(
+                  <div key={g.id} className="stat-card" style={{borderColor:'rgba(255,77,77,.35)'}}>
+                    <div className="stat-label" style={{display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{fontSize:14}}>{g.emoji||'💰'}</span>
+                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name}</span>
                     </div>
-                  ):(
-                    <div className="stat-sub">{mTotal?Math.round((x.spent/mTotal)*100):0}% of total</div>
-                  )}
-                </div>
-              );
-            });
-          })()}
-        </div>
-      </div>
+                    <div className="stat-value" style={{color:'var(--red)'}}>Rp {Math.round(x.spent/1000)}K</div>
+                    <div className="stat-sub" style={{color:'var(--red)',fontWeight:700}}>Over {Math.round(x.usage*100)}%</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="section">
         <div className="fxb" style={{marginBottom:12}}><div className="section-label" style={{margin:0}}>Weekly Trend</div></div>
@@ -1669,7 +1657,7 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets}){
   const [selYear]=useState(new Date().getFullYear());
   const [showRp,setShowRp]=useState(false);
   const [hovered,setHovered]=useState(null);
-  const [showInsights,setShowInsights]=useState(true);
+  const [showInsights,setShowInsights]=useState(false);
 
   const mTx=useMemo(()=>{
     const s=new Date(selYear,selMonth-1,25).toISOString().split('T')[0];
@@ -2102,6 +2090,35 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets}){
         <div className="section"><div className="card" style={{textAlign:'center',padding:32,color:'var(--t3)',fontSize:13}}>No transactions this period</div></div>
       ):(
         <>
+          {/* Spending Insights */}
+          <div className="section">
+            <div className="fxb" style={{marginBottom:12}}>
+              <div className="section-label" style={{margin:0}}>Spending Insights ✨</div>
+              <button onClick={()=>setShowInsights(v=>!v)} style={{background:'var(--abg)',border:'.5px solid var(--a)',borderRadius:20,padding:'5px 14px',fontSize:12,color:'var(--a)',cursor:'pointer',fontFamily:'var(--fb)',fontWeight:500}}>
+                {showInsights?'Collapse':'Expand'}
+              </button>
+            </div>
+            {showInsights&&(
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {insights.map((ins,i)=>(
+                  <div key={i} className="card" style={{padding:16}}>
+                    <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+                      <div style={{fontSize:20,flexShrink:0,marginTop:1}}>{ins.icon}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:14,lineHeight:1.5,color:'var(--t1)'}}>{ins.text}</div>
+                        {ins.action&&(
+                          <div style={{marginTop:8,padding:'8px 10px',background:'var(--abg)',borderRadius:8,borderLeft:'2px solid var(--a)',fontSize:13,color:'var(--a)',lineHeight:1.5}}>
+                            ➜ {ins.action}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </div>
           {/* Spending Forecast */}
           <div className="section">
             <div className="section-label">Spending Forecast</div>
@@ -2180,35 +2197,6 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets}){
             </div>
           )}
 
-          {/* Spending Insights */}
-          <div className="section">
-            <div className="fxb" style={{marginBottom:12}}>
-              <div className="section-label" style={{margin:0}}>Spending Insights ✨</div>
-              <button onClick={()=>setShowInsights(v=>!v)} style={{background:'var(--abg)',border:'.5px solid var(--a)',borderRadius:20,padding:'5px 14px',fontSize:12,color:'var(--a)',cursor:'pointer',fontFamily:'var(--fb)',fontWeight:500}}>
-                {showInsights?'Collapse':'Expand'}
-              </button>
-            </div>
-            {showInsights&&(
-              <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                {insights.map((ins,i)=>(
-                  <div key={i} className="card" style={{padding:16}}>
-                    <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
-                      <div style={{fontSize:20,flexShrink:0,marginTop:1}}>{ins.icon}</div>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:14,lineHeight:1.5,color:'var(--t1)'}}>{ins.text}</div>
-                        {ins.action&&(
-                          <div style={{marginTop:8,padding:'8px 10px',background:'var(--abg)',borderRadius:8,borderLeft:'2px solid var(--a)',fontSize:13,color:'var(--a)',lineHeight:1.5}}>
-                            ➜ {ins.action}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-          </div>
           {/* Pie Chart */}
           <div className="section">
             <div className="section-label">By Category</div>
