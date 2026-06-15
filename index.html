@@ -374,11 +374,11 @@ function AddTx({groups,subCats,sources,userId,createdBy,onSave,onClose}){
   const [saving,setSaving]=useState(false);
   const parseAmt=v=>v.replace(/\./g,'').replace(/,/g,'').replace(/[^0-9]/g,'');
 
-  const save=async()=>{
-    if(!desc.trim()||!amt||!gid)return;
+  const save=()=>{
+    if(!desc.trim()||!amt||!gid||saving)return;
     setSaving(true);
     const tx={id:'t'+Date.now(),user_id:userId,created_by:createdBy,description:desc.trim(),amount:parseInt(parseAmt(amt)),group_id:gid,sub_category_id:subCatId||null,source_id:srcId||null,date,photo:null};
-    await onSave(tx);setSaving(false);onClose();
+    onSave(tx);onClose();
   };
 
   return(
@@ -435,11 +435,11 @@ function EditTx({tx,groups,subCats,sources,onSave,onClose}){
   const [subCatId,setSubCatId]=useState(tx.sub_category_id||'');
   const [saving,setSaving]=useState(false);
   const parseAmt=v=>v.replace(/\./g,'').replace(/,/g,'').replace(/[^0-9]/g,'');
-  const save=async()=>{
-    if(!desc.trim()||!amt||!gid)return;
+  const save=()=>{
+    if(!desc.trim()||!amt||!gid||saving)return;
     setSaving(true);
     const updated={...tx,description:desc.trim(),amount:parseInt(parseAmt(amt)),group_id:gid,sub_category_id:subCatId||null,source_id:srcId||null,date};
-    await onSave(updated);setSaving(false);onClose();
+    onSave(updated);onClose();
   };
   return(
     <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -580,7 +580,7 @@ function PieChart({data,groups,total}){
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────
-function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
+const Dashboard=React.memo(function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
   const [mon,setMon]=useState(new Date().getMonth());
   const [yr]=useState(new Date().getFullYear());
   const [wf,setWf]=useState(()=>{const d=new Date();d.setDate(d.getDate()-6);return d.toISOString().split('T')[0]});
@@ -606,7 +606,8 @@ function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
   const wDays=useMemo(()=>{const a=[];for(let i=6;i>=0;i--){const d=new Date(wt);d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];const tot=txs.filter(t=>t.date===ds).reduce((s,t)=>s+t.amount,0);a.push({date:ds,tot,label:dayN(ds),isToday:ds===tod()})}return a},[txs,wt]);
   const maxD=Math.max(...wDays.map(d=>d.tot),1);
   const recent=useMemo(()=>{let a=[...txs].sort((a,b)=>b.date.localeCompare(a.date));if(fg!=='all')a=a.filter(t=>t.group_id===fg);return a.slice(0,lim)},[txs,fg,lim]);
-  const brakeAlerts=useMemo(()=>getCategoryBrakes({txs,groups,budgets,month:mon,year:yr}).filter(x=>x.status!=='safe').slice(0,3),[txs,groups,budgets,mon,yr]);
+  const catStatusAll=useMemo(()=>getCategoryBrakes({txs,groups,budgets,month:mon,year:yr}),[txs,groups,budgets,mon,yr]);
+  const brakeAlerts=useMemo(()=>catStatusAll.filter(x=>x.status!=='safe').slice(0,3),[catStatusAll]);
 
   return(
     <div className="page-scroll">
@@ -636,52 +637,38 @@ function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
         <div className="fxb" style={{marginBottom:10}}><div className="section-label" style={{margin:0}}>Category Breakdown</div></div>
         <div className="stats-grid">
           {(()=>{
+            // Top 4 categories by spend this month, with budget brake status if available
             const top4=Object.entries(byG).sort((a,b)=>b[1]-a[1]).slice(0,4);
-            if(top4.length===0)return <div className="empty" style={{gridColumn:'1 / -1',padding:'20px 0'}}><div className="empty-icon">📊</div><div>No spending yet this month</div></div>;
-            return top4.map(([gid,amt])=>{
+            const slots=top4.map(([gid,amt])=>{
               const g=groups.find(x=>x.id===gid);
-              const pct=mTotal?Math.round((amt/mTotal)*100):0;
+              const stat=catStatusAll.find(x=>x.group.id===gid);
+              return stat?{...stat,group:g,spent:amt}:{group:g,spent:amt,status:'safe',usage:0,budget:0};
+            });
+            if(slots.length===0)return <div className="empty" style={{gridColumn:'1 / -1',padding:'20px 0'}}><div className="empty-icon">📊</div><div>No spending yet this month</div></div>;
+            return slots.map(x=>{
+              const g=x.group;if(!g)return null;
+              const col=x.status==='over'?'var(--red)':x.status==='brake'?'var(--amber)':x.status==='tight'?'var(--amber)':'var(--t1)';
+              const hasBudget=x.budget>0;
               return(
-                <div key={gid} className="stat-card">
+                <div key={g.id} className="stat-card" style={{borderColor:x.status==='over'?'rgba(255,77,77,.35)':x.status==='brake'?'rgba(255,179,71,.35)':'var(--b1)'}}>
                   <div className="stat-label" style={{display:'flex',alignItems:'center',gap:6}}>
-                    <span style={{fontSize:14}}>{g?.emoji||'💰'}</span>
-                    <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g?.name||'Other'}</span>
+                    <span style={{fontSize:14}}>{g.emoji||'💰'}</span>
+                    <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name}</span>
                   </div>
-                  <div className="stat-value" style={{color:g?.color||'var(--t1)'}}>Rp {Math.round(amt/1000)}K</div>
-                  <div className="stat-sub">{pct}% of total</div>
+                  <div className="stat-value" style={{color:hasBudget?col:g.color||'var(--t1)'}}>Rp {Math.round(x.spent/1000)}K</div>
+                  {hasBudget?(
+                    <div className="stat-sub" style={{color:col,fontWeight:x.status==='over'?700:400}}>
+                      {x.status==='over'?`Over ${Math.round(x.usage*100)}%`:`${Math.round(x.usage*100)}% of budget`}
+                    </div>
+                  ):(
+                    <div className="stat-sub">{mTotal?Math.round((x.spent/mTotal)*100):0}% of total</div>
+                  )}
                 </div>
               );
             });
           })()}
         </div>
       </div>
-
-      {brakeAlerts.length>0&&(
-        <div className="section">
-          <div className="section-label">Category Brake</div>
-          <div style={{display:'flex',flexDirection:'column',gap:10}}>
-            {brakeAlerts.map(x=>{
-              const col=x.status==='over'?'var(--red)':x.status==='brake'?'var(--amber)':'var(--a)';
-              return(
-                <div key={x.group.id} className="card" style={{padding:14,borderColor:x.status==='over'?'rgba(255,77,77,.35)':x.status==='brake'?'rgba(255,179,71,.35)':'var(--b1)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                    <div style={{width:34,height:34,borderRadius:10,background:`${x.group.color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>{x.group.emoji}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:14,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.group.name}</div>
-                      <div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{Math.round(x.usage*100)}% used | {idr(Math.max(x.remaining,0))} left</div>
-                    </div>
-                    <div style={{fontSize:11,fontWeight:700,color:col,textTransform:'uppercase'}}>{x.status}</div>
-                  </div>
-                  <div className="prog-track" style={{height:5,marginBottom:8}}>
-                    <div className="prog-fill" style={{width:`${Math.min(x.usage*100,100)}%`,background:col}}/>
-                  </div>
-                  <div style={{fontSize:13,lineHeight:1.45,color:'var(--t2)'}}>{x.reason} <span style={{color:col,fontWeight:700}}>{x.limitText}</span></div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       <div className="section">
         <div className="fxb" style={{marginBottom:12}}><div className="section-label" style={{margin:0}}>Weekly Trend</div></div>
@@ -823,10 +810,10 @@ function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
       </div>
     </div>
   );
-}
+})
 
 // ── HISTORY ───────────────────────────────────────────────────────────
-function History({txs,groups,subCats,onDelete,onEdit}){
+const History=React.memo(function History({txs,groups,subCats,onDelete,onEdit}){
   const [fg,setFg]=useState('all');
   const [fsub,setFsub]=useState('all');
   const [q,setQ]=useState('');
@@ -1046,10 +1033,10 @@ function History({txs,groups,subCats,onDelete,onEdit}){
       )}
     </div>
   );
-}
+})
 
 // ── MASTER ────────────────────────────────────────────────────────────
-function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,setSubCats,currentUser}){
+const Master=React.memo(function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,setSubCats,currentUser}){
   const [tab,setTab]=useState('groups');
   const [users,setUsers]=useState([]);
   // group form
@@ -1089,7 +1076,7 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
   const [gSubList,setGSubList]=useState([]);
   const [saving,setSaving]=useState(false);
   const [toast,setToast]=useState(null);
-  const showT=(msg,icon='✓')=>{setToast({msg,icon});setTimeout(()=>setToast(null),2500)};
+  const showT=useCallback((msg,icon='✓')=>{setToast({msg,icon});setTimeout(()=>setToast(null),2500)},[]);
 
   const SOURCE_ICONS = ['💳','🏦','💵','📱','🏧','💰','🪙','🎫'];
 
@@ -1507,10 +1494,10 @@ function Master({groups,setGroups,budgets,setBudgets,sources,setSources,subCats,
 
     </div>
   );
-}
+})
 
 // ── PROFILE ───────────────────────────────────────────────────────────
-function Profile({currentUser,txs,onRefresh,onLogout}){
+const Profile=React.memo(function Profile({currentUser,txs,onRefresh,onLogout}){
   return(
     <div className="page-scroll">
       <div className="page-header"><div className="page-title">Profile</div></div>
@@ -1532,10 +1519,10 @@ function Profile({currentUser,txs,onRefresh,onLogout}){
       </div>
     </div>
   );
-}
+})
 
 // ── MONTHLY TREND CHART ──────────────────────────────────────────────
-function MonthlyTrendChart({txs,groups,selMonth,selYear}){
+const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,selMonth,selYear}){
   const [viewCat,setViewCat]=useState(null); // null = total, gid = per category
   const [tooltip,setTooltip]=useState(null); // {x,y,label,value}
 
@@ -1674,10 +1661,10 @@ function MonthlyTrendChart({txs,groups,selMonth,selYear}){
       </div>
     </div>
   );
-}
+})
 
 // ── SPEND ANALYSIS ───────────────────────────────────────────────────
-function SpendAnalysis({txs,groups,budgets}){
+const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets}){
   const [selMonth,setSelMonth]=useState(new Date().getMonth());
   const [selYear]=useState(new Date().getFullYear());
   const [showRp,setShowRp]=useState(false);
@@ -2349,7 +2336,7 @@ function SpendAnalysis({txs,groups,budgets}){
       )}
     </div>
   );
-}
+})
 
 
 // ── APP ───────────────────────────────────────────────────────────────
@@ -2366,7 +2353,7 @@ function App(){
   const [syncing,setSyncing]=useState(false);
   const [loading,setLoading]=useState(true);
   const [toast,setToast]=useState(null);
-  const showT=(msg,icon='✓')=>{setToast({msg,icon});setTimeout(()=>setToast(null),2500)};
+  const showT=useCallback((msg,icon='✓')=>{setToast({msg,icon});setTimeout(()=>setToast(null),2500)},[]);
 
   const load=useCallback(async(uid)=>{
     if(!uid)return;
@@ -2386,11 +2373,27 @@ function App(){
 
   useEffect(()=>{if(user)load(user.id);else setLoading(false)},[user]);
 
-  const login=u=>{setUser(u);setTab('dash')};
-  const logout=()=>{clearSession();setUser(null);setTxs([]);setGroups([]);setBudgets([]);setSources([]);setSubCats([])};
-  const addTx=async tx=>{try{await db.post('transactions',tx);setTxs(a=>[tx,...a]);showT('Saved ☁️')}catch{showT('Failed','⚠️')}};
-  const delTx=async id=>{try{await db.del('transactions',id);setTxs(a=>a.filter(t=>t.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
-  const updateTx=async tx=>{try{await db.patch('transactions',tx.id,tx);setTxs(a=>a.map(t=>t.id===tx.id?tx:t));showT('Updated ✓');setEditTxItem(null);}catch{showT('Failed','⚠️')}};
+  const login=useCallback(u=>{setUser(u);setTab('dash')},[]);
+  const logout=useCallback(()=>{clearSession();setUser(null);setTxs([]);setGroups([]);setBudgets([]);setSources([]);setSubCats([])},[]);
+
+  // Optimistic updates: update UI immediately, sync to Supabase in background.
+  const addTx=useCallback(tx=>{
+    setTxs(a=>[tx,...a]);
+    db.post('transactions',tx).then(()=>showT('Saved ☁️')).catch(()=>{setTxs(a=>a.filter(t=>t.id!==tx.id));showT('Failed - rolled back','⚠️')});
+  },[]);
+  const delTx=useCallback(id=>{
+    let removed;
+    setTxs(a=>{removed=a.find(t=>t.id===id);return a.filter(t=>t.id!==id)});
+    showT('Deleted','🗑');
+    db.del('transactions',id).catch(()=>{if(removed)setTxs(a=>[removed,...a]);showT('Failed - restored','⚠️')});
+  },[]);
+  const updateTx=useCallback(tx=>{
+    let prev;
+    setTxs(a=>{prev=a.find(t=>t.id===tx.id);return a.map(t=>t.id===tx.id?tx:t)});
+    setEditTxItem(null);
+    showT('Updated ✓');
+    db.patch('transactions',tx.id,tx).catch(()=>{if(prev)setTxs(a=>a.map(t=>t.id===tx.id?prev:t));showT('Failed - reverted','⚠️')});
+  },[]);
 
   if(!user)return <div style={{flex:1,display:'flex',flexDirection:'column',height:'100vh',background:'var(--bg)'}}><Login onLogin={login}/></div>;
   if(loading)return <div style={{flex:1,display:'flex',flexDirection:'column',height:'100vh',alignItems:'center',justifyContent:'center',background:'var(--bg)',gap:16}}><div style={{fontSize:48}}>💸</div><div style={{fontFamily:'var(--fh)',fontSize:24,fontWeight:800}}>Trackr</div><div style={{fontSize:13,color:'var(--t2)',display:'flex',alignItems:'center',gap:6}}><span className="sync-dot spin"/>Loading...</div></div>;
