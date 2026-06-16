@@ -1511,10 +1511,11 @@ const Profile=React.memo(function Profile({currentUser,txs,onRefresh,onLogout}){
 
 // ── MONTHLY TREND CHART ──────────────────────────────────────────────
 const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,selMonth,selYear}){
-  const [viewCat,setViewCat]=useState(null); // null = total, gid = per category
-  const [tooltip,setTooltip]=useState(null); // {x,y,label,value}
+  const [viewCat,setViewCat]=useState(null);
+  const [mode,setMode]=useState('monthly'); // 'monthly' | 'weekly'
+  const [tooltip,setTooltip]=useState(null);
 
-  // Build 12 months of data
+  // ── Monthly data (12 months, 25-24 cycle) ─────────────────────────
   const months=useMemo(()=>{
     const arr=[];
     for(let m=0;m<12;m++){
@@ -1524,57 +1525,87 @@ const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,selMon
       const total=mTx.reduce((sum,t)=>sum+t.amount,0);
       const byCat={};
       mTx.forEach(t=>{byCat[t.group_id]=(byCat[t.group_id]||0)+t.amount});
-      arr.push({month:m,label:MN[m].slice(0,3),total,byCat,mTx});
+      arr.push({label:MN[m].slice(0,3),total,byCat});
     }
     return arr;
   },[txs,selYear]);
 
-  const activeData=useMemo(()=>months.map(m=>viewCat?m.byCat[viewCat]||0:m.total),[months,viewCat]);
+  // ── Weekly data: last 12 Mon-Sun weeks ────────────────────────────
+  const weeks=useMemo(()=>{
+    const arr=[];
+    // Find Monday of current week
+    const now=new Date();
+    const dayOfWeek=now.getDay();
+    const diffToMon=dayOfWeek===0?-6:1-dayOfWeek;
+    const curMon=new Date(now);curMon.setDate(now.getDate()+diffToMon);
+    for(let w=11;w>=0;w--){
+      const mon=new Date(curMon);mon.setDate(curMon.getDate()-w*7);
+      const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+      const s=mon.toISOString().split('T')[0];
+      const e=sun.toISOString().split('T')[0];
+      const wTx=txs.filter(t=>t.date>=s&&t.date<=e);
+      const total=wTx.reduce((sum,t)=>sum+t.amount,0);
+      const byCat={};
+      wTx.forEach(t=>{byCat[t.group_id]=(byCat[t.group_id]||0)+t.amount});
+      const monStr=mon.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+      arr.push({label:monStr,total,byCat,s,e});
+    }
+    return arr;
+  },[txs]);
+
+  const dataPoints=mode==='monthly'?months:weeks;
+  const activeData=useMemo(()=>dataPoints.map(d=>viewCat?d.byCat[viewCat]||0:d.total),[dataPoints,viewCat]);
   const maxVal=Math.max(...activeData,1);
   const activeGroup=viewCat?groups.find(g=>g.id===viewCat):null;
   const lineColor=activeGroup?activeGroup.color:'#c8f560';
 
-  // SVG dimensions
   const W=320,H=140,padL=48,padR=12,padT=16,padB=28;
   const chartW=W-padL-padR;
   const chartH=H-padT-padB;
-  const xStep=chartW/(months.length-1);
+  const xStep=dataPoints.length>1?chartW/(dataPoints.length-1):chartW;
 
   const pts=activeData.map((v,i)=>({
-    x:padL+i*xStep,
-    y:padT+chartH-(v/maxVal)*chartH,
-    v,m:months[i].label,idx:i
+    x:padL+i*xStep, y:padT+chartH-(v/maxVal)*chartH, v, m:dataPoints[i].label, idx:i
   }));
 
-  // Build smooth SVG path
   const pathD=pts.reduce((d,p,i)=>{
     if(i===0)return `M ${p.x} ${p.y}`;
-    const prev=pts[i-1];
-    const cpx=(prev.x+p.x)/2;
+    const prev=pts[i-1];const cpx=(prev.x+p.x)/2;
     return d+` C ${cpx} ${prev.y} ${cpx} ${p.y} ${p.x} ${p.y}`;
   },'');
+  const areaD=pts.length>1?pathD+` L ${pts[pts.length-1].x} ${padT+chartH} L ${pts[0].x} ${padT+chartH} Z`:'';
 
-  // Area fill path
-  const areaD=pathD+` L ${pts[pts.length-1].x} ${padT+chartH} L ${pts[0].x} ${padT+chartH} Z`;
-
-  // Y axis labels
   const yLabels=[0,.25,.5,.75,1].map(f=>({
     y:padT+chartH-f*chartH,
     label:maxVal*f>=1000000?`${(maxVal*f/1000000).toFixed(1)}M`:maxVal*f>=1000?`${Math.round(maxVal*f/1000)}K`:'0'
   }));
 
+  // Active index: monthly = selMonth, weekly = last point (current week)
+  const activeIdx=mode==='monthly'?selMonth:pts.length-1;
+
+  const maxVal2=Math.max(...activeData);
+  const maxIdx=maxVal2>0?activeData.indexOf(maxVal2):-1;
+  const ytd=activeData.reduce((s,v)=>s+v,0);
+
   return(
     <div className="section">
-      <div className="section-label">Monthly Expenses Trend</div>
+      <div className="section-label">Expenses Trend</div>
       <div className="card">
-        {/* Toggle: Total vs Per Category */}
+        {/* Mode toggle: Monthly / Weekly */}
+        <div style={{display:'flex',gap:6,marginBottom:12}}>
+          <div className={`chip ${mode==='monthly'?'on':''}`} onClick={()=>{setMode('monthly');setTooltip(null)}} style={{fontSize:11,padding:'5px 12px'}}>Monthly</div>
+          <div className={`chip ${mode==='weekly'?'on':''}`} onClick={()=>{setMode('weekly');setTooltip(null)}} style={{fontSize:11,padding:'5px 12px'}}>Weekly</div>
+        </div>
+
+        {/* Category filter pills */}
         <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
-          <div onClick={()=>setViewCat(null)} className={`chip ${!viewCat?'on':''}`} style={{fontSize:11,padding:'5px 10px'}}>
-            Total
-          </div>
-          {groups.filter(g=>months.some(m=>m.byCat[g.id]>0)).map(g=>(
+          <div onClick={()=>setViewCat(null)} className={`chip ${!viewCat?'on':''}`} style={{fontSize:11,padding:'5px 10px'}}>Total</div>
+          {groups.filter(g=>dataPoints.some(d=>d.byCat[g.id]>0)).map(g=>(
             <div key={g.id} onClick={()=>setViewCat(g.id===viewCat?null:g.id)}
-              style={{display:'inline-flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:20,fontSize:11,cursor:'pointer',border:`.5px solid ${viewCat===g.id?g.color:'var(--b1)'}`,background:viewCat===g.id?`${g.color}18`:'var(--bg3)',color:viewCat===g.id?g.color:'var(--t2)',transition:'all .15s',flexShrink:0}}>
+              style={{display:'inline-flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:20,fontSize:11,cursor:'pointer',
+                border:`.5px solid ${viewCat===g.id?g.color:'var(--b1)'}`,
+                background:viewCat===g.id?`${g.color}18`:'var(--bg3)',
+                color:viewCat===g.id?g.color:'var(--t2)',transition:'all .15s',flexShrink:0}}>
               <span>{g.emoji}</span>{g.name}
             </div>
           ))}
@@ -1583,73 +1614,69 @@ const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,selMon
         {/* Chart */}
         <div style={{position:'relative'}} onMouseLeave={()=>setTooltip(null)} onTouchEnd={()=>setTimeout(()=>setTooltip(null),2000)}>
           <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{display:'block',overflow:'visible'}}>
-            {/* Y grid lines */}
             {yLabels.map((yl,i)=>(
               <g key={i}>
                 <line x1={padL} y1={yl.y} x2={W-padR} y2={yl.y} stroke="rgba(255,255,255,0.05)" strokeWidth="1"/>
                 <text x={padL-4} y={yl.y+4} textAnchor="end" fontSize="8" fill="var(--t3)" fontFamily="DM Sans">{yl.label}</text>
               </g>
             ))}
-            {/* Area fill */}
             <defs>
               <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={lineColor} stopOpacity="0.25"/>
                 <stop offset="100%" stopColor={lineColor} stopOpacity="0.02"/>
               </linearGradient>
             </defs>
-            <path d={areaD} fill="url(#areaGrad)"/>
-            {/* Line */}
-            <path d={pathD} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            {/* Data points + hit areas */}
-            {pts.map((p,i)=>(
-              <g key={i}>
-                <rect x={p.x-xStep/2} y={padT} width={xStep} height={chartH} fill="transparent" style={{cursor:'pointer'}}
-                  onMouseEnter={()=>setTooltip({x:p.x,y:p.y,label:p.m,value:p.v,idx:i})}
-                  onTouchStart={()=>setTooltip({x:p.x,y:p.y,label:p.m,value:p.v,idx:i})}/>
-                {tooltip?.idx===i&&<circle cx={p.x} cy={p.y} r="4" fill={lineColor} stroke="var(--bg2)" strokeWidth="2"/>}
-                <text x={p.x} y={H-8} textAnchor="middle" fontSize="8" fill={i===selMonth?lineColor:"var(--t3)"} fontFamily="DM Sans" fontWeight={i===selMonth?700:400}>{p.m}</text>
-              </g>
-            ))}
-            {/* Active dot always shown for current month */}
-            {pts[selMonth]&&<circle cx={pts[selMonth].x} cy={pts[selMonth].y} r="4" fill={lineColor} stroke="var(--bg2)" strokeWidth="2"/>}
+            {areaD&&<path d={areaD} fill="url(#areaGrad)"/>}
+            {pathD&&<path d={pathD} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}
+            {pts.map((p,i)=>{
+              const isActive=i===activeIdx;
+              // For weekly mode, only show every 3rd label to avoid crowding
+              const showLabel=mode==='monthly'||(i%3===0||i===pts.length-1);
+              return(
+                <g key={i}>
+                  <rect x={xStep>0?p.x-xStep/2:p.x-10} y={padT} width={xStep>0?xStep:20} height={chartH} fill="transparent" style={{cursor:'pointer'}}
+                    onMouseEnter={()=>setTooltip({x:p.x,y:p.y,label:p.m,value:p.v,idx:i})}
+                    onTouchStart={()=>setTooltip({x:p.x,y:p.y,label:p.m,value:p.v,idx:i})}/>
+                  {(tooltip?.idx===i||isActive)&&<circle cx={p.x} cy={p.y} r="4" fill={lineColor} stroke="var(--bg2)" strokeWidth="2"/>}
+                  {showLabel&&<text x={p.x} y={H-8} textAnchor="middle" fontSize={mode==='weekly'?7:8}
+                    fill={isActive?lineColor:'var(--t3)'} fontFamily="DM Sans" fontWeight={isActive?700:400}>{p.m}</text>}
+                </g>
+              );
+            })}
           </svg>
-
-          {/* Tooltip */}
           {tooltip&&(
             <div style={{
               position:'absolute',
-              left:Math.min(Math.max(tooltip.x/320*100,10),75)+'%',
-              top:Math.max(0,tooltip.y/140*100-20)+'%',
+              left:Math.min(Math.max((tooltip.x/W)*100,15),80)+'%',
+              top:Math.max(0,(tooltip.y/H)*100-18)+'%',
               transform:'translateX(-50%)',
               background:'var(--bg)',border:`.5px solid ${lineColor}`,
-              borderRadius:8,padding:'6px 10px',pointerEvents:'none',zIndex:10,
-              minWidth:80,textAlign:'center'
+              borderRadius:8,padding:'6px 10px',pointerEvents:'none',zIndex:10,minWidth:90,textAlign:'center'
             }}>
-              <div style={{fontSize:10,color:'var(--t3)',marginBottom:2}}>{tooltip.label} {selYear}</div>
+              <div style={{fontSize:10,color:'var(--t3)',marginBottom:2}}>{tooltip.label}</div>
               <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,color:lineColor}}>{idr(tooltip.value)}</div>
             </div>
           )}
         </div>
 
-        {/* Summary row */}
+        {/* Summary */}
         <div style={{display:'flex',justifyContent:'space-between',marginTop:10,paddingTop:10,borderTop:'.5px solid var(--b1)'}}>
           <div>
-            <div style={{fontSize:11,color:'var(--t3)'}}>Highest month</div>
+            <div style={{fontSize:11,color:'var(--t3)'}}>{mode==='monthly'?'Highest month':'Highest week'}</div>
             <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,color:lineColor,marginTop:2}}>
-              {MN[activeData.indexOf(Math.max(...activeData))]} — {idr(Math.max(...activeData))}
+              {maxIdx>=0?`${dataPoints[maxIdx].label} - ${idr(maxVal2)}`:'No data'}
             </div>
           </div>
           <div style={{textAlign:'right'}}>
-            <div style={{fontSize:11,color:'var(--t3)'}}>YTD Total</div>
-            <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,color:'var(--t1)',marginTop:2}}>
-              {idr(activeData.reduce((s,v)=>s+v,0))}
-            </div>
+            <div style={{fontSize:11,color:'var(--t3)'}}>{mode==='monthly'?'YTD Total':'12-week Total'}</div>
+            <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,color:'var(--t1)',marginTop:2}}>{idr(ytd)}</div>
           </div>
         </div>
       </div>
     </div>
   );
 })
+
 
 // ── SPEND ANALYSIS ───────────────────────────────────────────────────
 const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets}){
