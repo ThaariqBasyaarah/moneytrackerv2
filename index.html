@@ -1510,98 +1510,114 @@ const Profile=React.memo(function Profile({currentUser,txs,onRefresh,onLogout}){
 })
 
 // ── MONTHLY TREND CHART ──────────────────────────────────────────────
-const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,selMonth,selYear}){
-  const [viewCat,setViewCat]=useState(null);
-  const [mode,setMode]=useState('monthly'); // 'monthly' | 'weekly'
+const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,subCats=[],selMonth,selYear}){
+  const [mode,setMode]=useState('monthly');     // 'monthly' | 'weekly'
+  const [viewCat,setViewCat]=useState(null);    // group_id or null (total)
+  const [viewSub,setViewSub]=useState(null);    // sub_category_id or null
   const [tooltip,setTooltip]=useState(null);
 
-  // ── Monthly data (12 months, 25-24 cycle) ─────────────────────────
+  // When category changes, reset sub
+  const selectCat=gid=>{setViewCat(gid===viewCat?null:gid);setViewSub(null)};
+  const selectSub=sid=>{setViewSub(sid===viewSub?null:sid)};
+
+  // Sub-categories available for selected category
+  const subsForCat=useMemo(()=>viewCat?subCats.filter(s=>s.group_id===viewCat):[],[subCats,viewCat]);
+
+  // Build period data
+  const buildPoint=(periodTxs)=>{
+    const total=periodTxs.reduce((s,t)=>s+t.amount,0);
+    const byCat={};
+    periodTxs.forEach(t=>{byCat[t.group_id]=(byCat[t.group_id]||0)+t.amount});
+    const bySub={};
+    periodTxs.forEach(t=>{if(t.sub_category_id)bySub[t.sub_category_id]=(bySub[t.sub_category_id]||0)+t.amount});
+    return{total,byCat,bySub};
+  };
+
   const months=useMemo(()=>{
     const arr=[];
     for(let m=0;m<12;m++){
       const s=new Date(selYear,m-1,25).toISOString().split('T')[0];
       const e=new Date(selYear,m,24).toISOString().split('T')[0];
-      const mTx=txs.filter(t=>t.date>=s&&t.date<=e);
-      const total=mTx.reduce((sum,t)=>sum+t.amount,0);
-      const byCat={};
-      mTx.forEach(t=>{byCat[t.group_id]=(byCat[t.group_id]||0)+t.amount});
-      arr.push({label:MN[m].slice(0,3),total,byCat});
+      const pt=buildPoint(txs.filter(t=>t.date>=s&&t.date<=e));
+      arr.push({label:MN[m].slice(0,3),...pt});
     }
     return arr;
   },[txs,selYear]);
 
-  // ── Weekly data: last 12 Mon-Sun weeks ────────────────────────────
   const weeks=useMemo(()=>{
     const arr=[];
-    // Find Monday of current week
-    const now=new Date();
-    const dayOfWeek=now.getDay();
-    const diffToMon=dayOfWeek===0?-6:1-dayOfWeek;
-    const curMon=new Date(now);curMon.setDate(now.getDate()+diffToMon);
+    const now=new Date();const dow=now.getDay();
+    const curMon=new Date(now);curMon.setDate(now.getDate()+(dow===0?-6:1-dow));
     for(let w=11;w>=0;w--){
       const mon=new Date(curMon);mon.setDate(curMon.getDate()-w*7);
       const sun=new Date(mon);sun.setDate(mon.getDate()+6);
       const s=mon.toISOString().split('T')[0];
       const e=sun.toISOString().split('T')[0];
-      const wTx=txs.filter(t=>t.date>=s&&t.date<=e);
-      const total=wTx.reduce((sum,t)=>sum+t.amount,0);
-      const byCat={};
-      wTx.forEach(t=>{byCat[t.group_id]=(byCat[t.group_id]||0)+t.amount});
-      const monStr=mon.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
-      arr.push({label:monStr,total,byCat,s,e});
+      const pt=buildPoint(txs.filter(t=>t.date>=s&&t.date<=e));
+      const label=mon.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+      arr.push({label,...pt});
     }
     return arr;
   },[txs]);
 
   const dataPoints=mode==='monthly'?months:weeks;
-  const activeData=useMemo(()=>dataPoints.map(d=>viewCat?d.byCat[viewCat]||0:d.total),[dataPoints,viewCat]);
+
+  const activeData=useMemo(()=>dataPoints.map(d=>{
+    if(viewSub) return d.bySub[viewSub]||0;
+    if(viewCat) return d.byCat[viewCat]||0;
+    return d.total;
+  }),[dataPoints,viewCat,viewSub]);
+
   const maxVal=Math.max(...activeData,1);
   const activeGroup=viewCat?groups.find(g=>g.id===viewCat):null;
+  const activeSub=viewSub?subCats.find(s=>s.id===viewSub):null;
   const lineColor=activeGroup?activeGroup.color:'#c8f560';
 
   const W=320,H=140,padL=48,padR=12,padT=16,padB=28;
-  const chartW=W-padL-padR;
-  const chartH=H-padT-padB;
+  const chartW=W-padL-padR;const chartH=H-padT-padB;
   const xStep=dataPoints.length>1?chartW/(dataPoints.length-1):chartW;
 
-  const pts=activeData.map((v,i)=>({
-    x:padL+i*xStep, y:padT+chartH-(v/maxVal)*chartH, v, m:dataPoints[i].label, idx:i
-  }));
-
+  const pts=activeData.map((v,i)=>({x:padL+i*xStep,y:padT+chartH-(v/maxVal)*chartH,v,m:dataPoints[i].label,idx:i}));
   const pathD=pts.reduce((d,p,i)=>{
-    if(i===0)return `M ${p.x} ${p.y}`;
+    if(i===0)return`M ${p.x} ${p.y}`;
     const prev=pts[i-1];const cpx=(prev.x+p.x)/2;
     return d+` C ${cpx} ${prev.y} ${cpx} ${p.y} ${p.x} ${p.y}`;
   },'');
   const areaD=pts.length>1?pathD+` L ${pts[pts.length-1].x} ${padT+chartH} L ${pts[0].x} ${padT+chartH} Z`:'';
-
   const yLabels=[0,.25,.5,.75,1].map(f=>({
     y:padT+chartH-f*chartH,
     label:maxVal*f>=1000000?`${(maxVal*f/1000000).toFixed(1)}M`:maxVal*f>=1000?`${Math.round(maxVal*f/1000)}K`:'0'
   }));
-
-  // Active index: monthly = selMonth, weekly = last point (current week)
   const activeIdx=mode==='monthly'?selMonth:pts.length-1;
-
   const maxVal2=Math.max(...activeData);
   const maxIdx=maxVal2>0?activeData.indexOf(maxVal2):-1;
   const ytd=activeData.reduce((s,v)=>s+v,0);
+
+  // Active filter label for display
+  const filterLabel=viewSub?`${activeGroup?.emoji||''} ${activeSub?.name||''}`:viewCat?`${activeGroup?.emoji||''} ${activeGroup?.name||''}`:null;
 
   return(
     <div className="section">
       <div className="section-label">Expenses Trend</div>
       <div className="card">
-        {/* Mode toggle: Monthly / Weekly */}
+        {/* Mode toggle */}
         <div style={{display:'flex',gap:6,marginBottom:12}}>
           <div className={`chip ${mode==='monthly'?'on':''}`} onClick={()=>{setMode('monthly');setTooltip(null)}} style={{fontSize:11,padding:'5px 12px'}}>Monthly</div>
           <div className={`chip ${mode==='weekly'?'on':''}`} onClick={()=>{setMode('weekly');setTooltip(null)}} style={{fontSize:11,padding:'5px 12px'}}>Weekly</div>
+          {filterLabel&&(
+            <div onClick={()=>{setViewCat(null);setViewSub(null)}}
+              style={{display:'inline-flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:20,fontSize:11,cursor:'pointer',
+                background:'var(--abg)',border:'.5px solid var(--a)',color:'var(--a)',marginLeft:'auto'}}>
+              {filterLabel} <span style={{fontSize:12}}>x</span>
+            </div>
+          )}
         </div>
 
-        {/* Category filter pills */}
-        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
-          <div onClick={()=>setViewCat(null)} className={`chip ${!viewCat?'on':''}`} style={{fontSize:11,padding:'5px 10px'}}>Total</div>
+        {/* Category pills */}
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:viewCat&&subsForCat.length>0?8:14}}>
+          <div onClick={()=>{setViewCat(null);setViewSub(null)}} className={`chip ${!viewCat?'on':''}`} style={{fontSize:11,padding:'5px 10px'}}>Total</div>
           {groups.filter(g=>dataPoints.some(d=>d.byCat[g.id]>0)).map(g=>(
-            <div key={g.id} onClick={()=>setViewCat(g.id===viewCat?null:g.id)}
+            <div key={g.id} onClick={()=>selectCat(g.id)}
               style={{display:'inline-flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:20,fontSize:11,cursor:'pointer',
                 border:`.5px solid ${viewCat===g.id?g.color:'var(--b1)'}`,
                 background:viewCat===g.id?`${g.color}18`:'var(--bg3)',
@@ -1610,6 +1626,22 @@ const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,selMon
             </div>
           ))}
         </div>
+
+        {/* Sub-category pills — only show when a category is selected and has subs */}
+        {viewCat&&subsForCat.length>0&&(
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,paddingLeft:4,borderLeft:'2px solid '+lineColor}}>
+            <div onClick={()=>setViewSub(null)} className={`chip ${!viewSub?'on':''}`} style={{fontSize:10,padding:'4px 8px'}}>All subs</div>
+            {subsForCat.map(s=>(
+              <div key={s.id} onClick={()=>selectSub(s.id)}
+                style={{display:'inline-flex',padding:'4px 8px',borderRadius:20,fontSize:10,cursor:'pointer',
+                  border:`.5px solid ${viewSub===s.id?lineColor:'var(--b1)'}`,
+                  background:viewSub===s.id?`${lineColor}22`:'var(--bg3)',
+                  color:viewSub===s.id?lineColor:'var(--t2)',transition:'all .15s',flexShrink:0}}>
+                {s.name}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Chart */}
         <div style={{position:'relative'}} onMouseLeave={()=>setTooltip(null)} onTouchEnd={()=>setTimeout(()=>setTooltip(null),2000)}>
@@ -1621,16 +1653,15 @@ const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,selMon
               </g>
             ))}
             <defs>
-              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="areaGrad2" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={lineColor} stopOpacity="0.25"/>
                 <stop offset="100%" stopColor={lineColor} stopOpacity="0.02"/>
               </linearGradient>
             </defs>
-            {areaD&&<path d={areaD} fill="url(#areaGrad)"/>}
+            {areaD&&<path d={areaD} fill="url(#areaGrad2)"/>}
             {pathD&&<path d={pathD} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}
             {pts.map((p,i)=>{
               const isActive=i===activeIdx;
-              // For weekly mode, only show every 3rd label to avoid crowding
               const showLabel=mode==='monthly'||(i%3===0||i===pts.length-1);
               return(
                 <g key={i}>
@@ -1645,14 +1676,12 @@ const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,selMon
             })}
           </svg>
           {tooltip&&(
-            <div style={{
-              position:'absolute',
+            <div style={{position:'absolute',
               left:Math.min(Math.max((tooltip.x/W)*100,15),80)+'%',
               top:Math.max(0,(tooltip.y/H)*100-18)+'%',
               transform:'translateX(-50%)',
               background:'var(--bg)',border:`.5px solid ${lineColor}`,
-              borderRadius:8,padding:'6px 10px',pointerEvents:'none',zIndex:10,minWidth:90,textAlign:'center'
-            }}>
+              borderRadius:8,padding:'6px 10px',pointerEvents:'none',zIndex:10,minWidth:90,textAlign:'center'}}>
               <div style={{fontSize:10,color:'var(--t3)',marginBottom:2}}>{tooltip.label}</div>
               <div style={{fontFamily:'var(--fh)',fontSize:13,fontWeight:700,color:lineColor}}>{idr(tooltip.value)}</div>
             </div>
@@ -1679,7 +1708,7 @@ const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,selMon
 
 
 // ── SPEND ANALYSIS ───────────────────────────────────────────────────
-const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets}){
+const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCats=[]}){
   const [selMonth,setSelMonth]=useState(new Date().getMonth());
   const [selYear]=useState(new Date().getFullYear());
   const [showRp,setShowRp]=useState(false);
@@ -2272,7 +2301,7 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets}){
           </div>
 
           {/* Monthly Trend Chart */}
-          <MonthlyTrendChart txs={txs} groups={groups} selMonth={selMonth} selYear={selYear}/>
+          <MonthlyTrendChart txs={txs} groups={groups} subCats={subCats} selMonth={selMonth} selYear={selYear}/>
 
           {/* Top 5 Categories */}
           <div className="section">
@@ -2444,7 +2473,7 @@ function App(){
       <div className="main-wrap">
         {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} sources={sources} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
         {tab==='hist'&&<History txs={txs} groups={groups} subCats={subCats} onDelete={delTx} onEdit={setEditTxItem}/>}
-        {tab==='analysis'&&<SpendAnalysis txs={txs} groups={groups} budgets={budgets}/>}
+        {tab==='analysis'&&<SpendAnalysis txs={txs} groups={groups} budgets={budgets} subCats={subCats}/>}
         {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} sources={sources} setSources={setSources} subCats={subCats} setSubCats={setSubCats} currentUser={user}/>}
         {tab==='profile'&&<Profile currentUser={user} txs={txs} onRefresh={()=>load(user.id)} onLogout={logout}/>}
       </div>
