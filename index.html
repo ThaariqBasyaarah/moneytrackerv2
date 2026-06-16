@@ -1900,32 +1900,63 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
 
     // ── #3 Recurring ─────────────────────────────────────────────────
     if(recurring.length>0){
-      const sorted=[...recurring].sort((a,b)=>b.count!==a.count?b.count-a.count:b.total-a.total);
+      // Sort by total amount (highest value recurring = most impactful)
+      const sorted=[...recurring].sort((a,b)=>b.total-a.total);
       const top=sorted[0];
       const recurringTotal=recurring.reduce((s,r)=>s+r.total,0);
       const recurPct=Math.round((recurringTotal/total)*100);
-      const saving=Math.round(top.total*0.5);
-      const runner=sorted[1];
-      const noteExtra=runner&&runner.count===top.count?` (${runner.desc} juga ${runner.count}x = ${idr(runner.total)})`:'';
-      const prevRecurring={};prevTx.forEach(t=>{const key=t.description.toLowerCase().trim();if(!prevRecurring[key])prevRecurring[key]=0;prevRecurring[key]++});
-      const newRecurring=recurring.filter(r=>!prevRecurring[r.desc.toLowerCase().trim()]||prevRecurring[r.desc.toLowerCase().trim()]<2);
-      const goneRecurring=Object.keys(prevRecurring).filter(k=>prevRecurring[k]>=2&&!recurring.find(r=>r.desc.toLowerCase().trim()===k));
-      const topCatRecur=groups.find(g=>recurring.filter(r=>mTx.find(t=>t.description.toLowerCase()===r.desc.toLowerCase()&&t.group_id===g.id)).length>=recurring.length*0.6);
-      const recurValueNaik=prevTx.length>0&&recurPct>30;
-      let text,action;
-      text=`"${top.desc}" paling sering: ${top.count}x = ${idr(top.total)}.${noteExtra}`;
-      // Action focused on the top recurring item itself
       const avgPerOccur=Math.round(top.total/top.count);
       const projYear=top.total*12;
-      if(top.count>=5) action=`"${top.desc}" muncul ${top.count}x bulan ini dengan rata-rata ${idr(avgPerOccur)}/kali. Cek apakah ini memang kebutuhan atau sudah jadi habit tanpa sadar.`;
-      else if(top.count>=3&&top.total>total*0.2) action=`"${top.desc}" 3x dan menyumbang lebih dari 20% total spending. Kalau dikurangi jadi 1x/bulan, hemat ${idr(top.total-avgPerOccur)}/bulan.`;
-      else if(top.count>=3&&avgPerOccur>50000) action=`"${top.desc}" rutin ${top.count}x = ${idr(top.total)}. Kalau ini terus tiap bulan, setahun bisa ${idr(projYear)} — worth it ga?`;
-      else if(top.count>=3&&avgPerOccur<=50000) action=`"${top.desc}" kelihatannya kecil per transaksi (${idr(avgPerOccur)}), tapi ${top.count}x/bulan = ${idr(top.total)}/bulan atau ${idr(projYear)}/tahun kalau terus.`;
-      else if(recurPct>50) action=`"${top.desc}" jadi bagian dari recurring yang mendominasi ${recurPct}% total spending. Audit semua item rutin — cancel yang jarang kepake.`;
-      else if(recurPct>30) action=`"${top.desc}" adalah recurring terbesar (${Math.round(top.total/recurringTotal*100)}% dari total recurring). Cari alternatif lebih murah atau kurangi frekuensinya.`;
-      else if(newRecurring.length>0){const names=newRecurring.slice(0,3).map(r=>`"${r.desc}"`).join(', ')+(newRecurring.length>3?` +${newRecurring.length-3} lainnya`:'');action=`"${top.desc}" dan beberapa item lain (${names}) adalah recurring baru bulan ini — pastikan ini memang direncanakan, bukan tiba-tiba jadi kebiasaan.`;}
-      else if(goneRecurring.length>0) action=`"${top.desc}" masih rutin, tapi kamu berhasil stop ${goneRecurring.length} recurring lain vs bulan lalu. Lanjutin progress ini!`;
-      else action=`Kalau "${top.desc}" dikurangi setengah frekuensinya, bisa hemat ${idr(saving)}/bulan atau ${idr(saving*12)}/tahun.`;
+      const topPctOfRecur=Math.round(top.total/recurringTotal*100);
+      const topPctOfTotal=Math.round(top.total/total*100);
+      // Prev month recurring map (by desc)
+      const prevRecurring={};
+      prevTx.forEach(t=>{const key=t.description.toLowerCase().trim();if(!prevRecurring[key])prevRecurring[key]={count:0,total:0};prevRecurring[key].count++;prevRecurring[key].total+=t.amount;});
+      const isNewThisMonth=!prevRecurring[top.desc.toLowerCase().trim()]||prevRecurring[top.desc.toLowerCase().trim()].count<2;
+      const prevTopEntry=prevRecurring[top.desc.toLowerCase().trim()];
+      const topGrew=prevTopEntry&&prevTopEntry.count>=2&&top.total>prevTopEntry.total;
+      const topGrowPct=prevTopEntry&&prevTopEntry.total>0?Math.round(((top.total-prevTopEntry.total)/prevTopEntry.total)*100):0;
+      const goneRecurring=Object.entries(prevRecurring).filter(([k,v])=>v.count>=2&&!recurring.find(r=>r.desc.toLowerCase().trim()===k));
+      const biggestGone=goneRecurring.sort((a,b)=>b[1].total-a[1].total)[0];
+      const runner=sorted[1];
+
+      // text: always lead with total value, not count
+      const text=`"${top.desc}" paling besar: ${idr(top.total)} (${top.count}x bulan ini).`;
+      let action;
+
+      // Case 1: Top recurring > 30% of total spending — single item dominates
+      if(topPctOfTotal>=30){
+        action=`"${top.desc}" menyedot ${topPctOfTotal}% dari total pengeluaran bulan ini sendirian. Kalau ini bisa dipangkas setengahnya, langsung hemat ${idr(Math.round(top.total*0.5))}/bulan.`;
+      }
+      // Case 2: High frequency (4x+) AND high total — double danger
+      else if(top.count>=4&&top.total>total*0.15){
+        action=`"${top.desc}" muncul ${top.count}x dengan total ${idr(top.total)} — frekuensi tinggi sekaligus nilainya gede. Kalau dikurangi jadi 2x/bulan aja, hemat ${idr(top.total-avgPerOccur*2)}/bulan.`;
+      }
+      // Case 3: Brand new recurring this month with big total
+      else if(isNewThisMonth&&top.total>total*0.1){
+        action=`"${top.desc}" adalah pengeluaran berulang baru bulan ini — langsung masuk ${idr(top.total)}. Pastikan ini memang direncanakan, bukan tiba-tiba jadi kebiasaan.`;
+      }
+      // Case 4: Top recurring grew significantly vs last month
+      else if(topGrew&&topGrowPct>=30){
+        action=`"${top.desc}" naik ${topGrowPct}% vs bulan lalu (${idr(prevTopEntry.total)} → ${idr(top.total)}). Cek apa yang berubah — frekuensi bertambah atau harganya naik?`;
+      }
+      // Case 5: Recurring total dominates overall spending
+      else if(recurPct>=50){
+        const topNames=sorted.slice(0,3).map(r=>`"${r.desc}"`).join(', ');
+        action=`${recurPct}% pengeluaran bulan ini dari item berulang: ${topNames}. Audit satu-satu — mana yang bisa dikurangi atau dihapus sama sekali.`;
+      }
+      // Case 6: Successfully stopped a big recurring from last month
+      else if(biggestGone&&biggestGone[1].total>50000){
+        action=`"${top.desc}" masih jalan, tapi kamu berhasil stop "${biggestGone[0]}" yang bulan lalu ${idr(biggestGone[1].total)}. Kalau hemat itu konsisten, setahun bisa nyimpan ${idr(biggestGone[1].total*12)}.`;
+      }
+      // Case 7: Small per-transaction but accumulates big
+      else if(avgPerOccur<=75000&&top.count>=3){
+        action=`"${top.desc}" kelihatannya kecil per transaksi (${idr(avgPerOccur)}), tapi ${top.count}x/bulan = ${idr(top.total)}. Kalau terus setahun bisa ${idr(projYear)} — worth it?`;
+      }
+      // Case 8: Fallback — project to annual
+      else{
+        action=`"${top.desc}" total ${idr(top.total)} bulan ini. Kalau rutin tiap bulan, setahun bisa ${idr(projYear)} — cek apakah bisa ditekan atau dicari yang lebih murah.`;
+      }
       list.push({icon:'🔄',text,action});
     } else {
       if(prevTx.length>0&&Object.keys((() => {const m={};prevTx.forEach(t=>{const k=t.description.toLowerCase().trim();m[k]=(m[k]||0)+1});return m})()).filter(k=>Object.assign({},(() => {const m={};prevTx.forEach(t=>{const k=t.description.toLowerCase().trim();m[k]=(m[k]||0)+1});return m})())[k]>=2).length>0){
