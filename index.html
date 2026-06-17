@@ -649,7 +649,7 @@ const Dashboard=React.memo(function Dashboard({txs,groups,budgets,sources,onRefr
                       <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name}</span>
                     </div>
                     <div className="stat-value" style={{color:'var(--red)'}}>Rp {Math.round(x.spent/1000)}K</div>
-                    <div className="stat-sub" style={{color:'var(--red)',fontWeight:700}}>Over {Math.round(x.usage*100)}%</div>
+                    <div className="stat-sub" style={{color:'var(--red)',fontWeight:700}}>Over {Math.round((x.usage-1)*100)}%</div>
                   </div>
                 );
               })}
