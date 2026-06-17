@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
     :root{
@@ -1918,7 +1918,6 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
       const topGrowPct=prevTopEntry&&prevTopEntry.total>0?Math.round(((top.total-prevTopEntry.total)/prevTopEntry.total)*100):0;
       const goneRecurring=Object.entries(prevRecurring).filter(([k,v])=>v.count>=2&&!recurring.find(r=>r.desc.toLowerCase().trim()===k));
       const biggestGone=goneRecurring.sort((a,b)=>b[1].total-a[1].total)[0];
-      const runner=sorted[1];
 
       // text: always lead with total value, not count
       const text=`"${top.desc}" paling besar: ${idr(top.total)} (${top.count}x bulan ini).`;
