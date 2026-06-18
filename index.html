@@ -801,9 +801,10 @@ const Dashboard=React.memo(function Dashboard({txs,groups,budgets,sources,onRefr
 })
 
 // ── HISTORY ───────────────────────────────────────────────────────────
-const History=React.memo(function History({txs,groups,subCats,onDelete,onEdit}){
+const History=React.memo(function History({txs,groups,subCats,sources,onDelete,onEdit}){
   const [fg,setFg]=useState('all');
   const [fsub,setFsub]=useState('all');
+  const [fsrc,setFsrc]=useState('all');
   const [q,setQ]=useState('');
   const [dir,setDir]=useState('desc');
   const [dateFrom,setDateFrom]=useState('');
@@ -818,6 +819,7 @@ const History=React.memo(function History({txs,groups,subCats,onDelete,onEdit}){
     let a=[...txs];
     if(fg!=='all')a=a.filter(t=>t.group_id===fg);
     if(fsub!=='all')a=a.filter(t=>t.sub_category_id===fsub);
+    if(fsrc!=='all')a=a.filter(t=>t.source_id===fsrc);
     if(q)a=a.filter(t=>t.description.toLowerCase().includes(q.toLowerCase()));
     if(dateFrom)a=a.filter(t=>t.date>=dateFrom);
     if(dateTo)a=a.filter(t=>t.date<=dateTo);
@@ -825,7 +827,7 @@ const History=React.memo(function History({txs,groups,subCats,onDelete,onEdit}){
     if(amtMax)a=a.filter(t=>t.amount<=parseInt(amtMax));
     a.sort((a,b)=>dir==='desc'?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
     return a;
-  },[txs,fg,fsub,q,dir,dateFrom,dateTo,amtMin,amtMax]);
+  },[txs,fg,fsub,fsrc,q,dir,dateFrom,dateTo,amtMin,amtMax]);
 
   const filteredTotal=useMemo(()=>list.reduce((s,t)=>s+t.amount,0),[list]);
 
@@ -866,11 +868,12 @@ const History=React.memo(function History({txs,groups,subCats,onDelete,onEdit}){
   const activeFilters=[];
   if(fg!=='all'){const g=groups.find(x=>x.id===fg);activeFilters.push({label:`${g?.emoji||''} ${g?.name||''}`,clear:()=>{setFg('all');setFsub('all')}});}
   if(fsub!=='all'){const s=subCats.find(x=>x.id===fsub);activeFilters.push({label:s?.name||'',clear:()=>setFsub('all')});}
+  if(fsrc!=='all'){const s=sources.find(x=>x.id===fsrc);activeFilters.push({label:`${s?.icon||'💳'} ${s?.name||''}`,clear:()=>setFsrc('all')});}
   if(dateFrom||dateTo){activeFilters.push({label:`${dateFrom?new Date(dateFrom).toLocaleDateString('id-ID',{day:'numeric',month:'short'}):'...'} - ${dateTo?new Date(dateTo).toLocaleDateString('id-ID',{day:'numeric',month:'short'}):'...'}`,clear:()=>{setDateFrom('');setDateTo('')}});}
   if(amtMin||amtMax){activeFilters.push({label:`${amtMin?idr(parseInt(amtMin)):'0'} - ${amtMax?idr(parseInt(amtMax)):'∞'}`,clear:()=>{setAmtMin('');setAmtMax('')}});}
   if(q){activeFilters.push({label:`"${q}"`,clear:()=>setQ('')});}
 
-  const resetAll=()=>{setFg('all');setFsub('all');setQ('');setDateFrom('');setDateTo('');setAmtMin('');setAmtMax('');};
+  const resetAll=()=>{setFg('all');setFsub('all');setFsrc('all');setQ('');setDateFrom('');setDateTo('');setAmtMin('');setAmtMax('');};
   const subsForFg=fg!=='all'?subCats.filter(s=>s.group_id===fg):[];
 
   return(
@@ -1001,6 +1004,17 @@ const History=React.memo(function History({txs,groups,subCats,onDelete,onEdit}){
                   <input className="fi" inputMode="numeric" placeholder="Max" style={{flex:1,padding:'10px',fontSize:13}} value={amtMax?parseInt(amtMax).toLocaleString('id-ID'):''} onChange={e=>setAmtMax(parseAmt(e.target.value))}/>
                 </div>
               </div>
+
+              {/* Payment Source */}
+              {sources.length>0&&(
+                <div className="fg">
+                  <label className="fl">Payment Source</label>
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                    <div className={`chip ${fsrc==='all'?'on':''}`} onClick={()=>setFsrc('all')}>All</div>
+                    {sources.map(s=><div key={s.id} className={`chip ${fsrc===s.id?'on':''}`} onClick={()=>setFsrc(s.id)}>{s.icon} {s.name}</div>)}
+                  </div>
+                </div>
+              )}
 
               {/* Sort */}
               <div className="fg">
@@ -2502,7 +2516,7 @@ function App(){
       {/* Main content */}
       <div className="main-wrap">
         {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} sources={sources} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
-        {tab==='hist'&&<History txs={txs} groups={groups} subCats={subCats} onDelete={delTx} onEdit={setEditTxItem}/>}
+        {tab==='hist'&&<History txs={txs} groups={groups} subCats={subCats} sources={sources} onDelete={delTx} onEdit={setEditTxItem}/>}
         {tab==='analysis'&&<SpendAnalysis txs={txs} groups={groups} budgets={budgets} subCats={subCats}/>}
         {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} sources={sources} setSources={setSources} subCats={subCats} setSubCats={setSubCats} currentUser={user}/>}
         {tab==='profile'&&<Profile currentUser={user} txs={txs} onRefresh={()=>load(user.id)} onLogout={logout}/>}
