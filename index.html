@@ -258,8 +258,30 @@ const getFinanceCoach=({txs,budgets,month,year,prevTotal=0})=>{
 
 const getCategoryBrakes=({txs,groups,budgets,month,year})=>{
   const coach=getFinanceCoach({txs,budgets,month,year});
-  const monthly=budgets.filter(b=>b.type==='monthly'&&b.amount>0);
-  return monthly.map(b=>{
+  // Only include budgets relevant to this period:
+  // - no date_from/date_to = always active (legacy)
+  // - date_from/date_to must overlap with current period
+  const monthly=budgets.filter(b=>{
+    if(b.type!=='monthly'||!b.amount)return false;
+    if(!b.date_from&&!b.date_to)return true; // legacy: no date range, always active
+    const bFrom=b.date_from||'0000-01-01';
+    const bTo=b.date_to||'9999-12-31';
+    // overlap: budget period overlaps with coach period
+    return bFrom<=coach.endStr&&bTo>=coach.startStr;
+  });
+  // Dedupe by group_id: if multiple budgets for same group, pick the one whose date_from is latest (most recent)
+  const budgetByGroup={};
+  monthly.forEach(b=>{
+    const existing=budgetByGroup[b.group_id];
+    if(!existing)budgetByGroup[b.group_id]=b;
+    else{
+      const existFrom=existing.date_from||'0000-01-01';
+      const bFrom=b.date_from||'0000-01-01';
+      if(bFrom>existFrom)budgetByGroup[b.group_id]=b;
+    }
+  });
+  const deduped=Object.values(budgetByGroup);
+  return deduped.map(b=>{
     const g=groups.find(x=>x.id===b.group_id);
     if(!g)return null;
     const catTx=txs.filter(t=>t.group_id===g.id&&t.date>=coach.startStr&&t.date<=coach.endStr);
