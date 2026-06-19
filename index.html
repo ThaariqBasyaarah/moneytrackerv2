@@ -609,7 +609,7 @@ function PieChart({data,groups,total}){
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────
-const Dashboard=React.memo(function Dashboard({txs,groups,budgets,sources,onRefresh,syncing,onEditTx}){
+const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sources,onRefresh,syncing,onEditTx}){
   const [mon,setMon]=useState(new Date().getMonth());
   const [yr]=useState(new Date().getFullYear());
   const [wf,setWf]=useState(()=>{const d=new Date();d.setDate(d.getDate()-6);return d.toISOString().split('T')[0]});
@@ -2556,7 +2556,7 @@ function App(){
 
       {/* Main content */}
       <div className="main-wrap">
-        {tab==='dash'&&<Dashboard txs={txs} groups={groups} budgets={budgets} sources={sources} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
+        {tab==='dash'&&<Dashboard txs={txs} groups={groups} subCats={subCats} budgets={budgets} sources={sources} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
         {tab==='hist'&&<History txs={txs} groups={groups} subCats={subCats} sources={sources} onDelete={delTx} onEdit={setEditTxItem}/>}
         {tab==='analysis'&&<SpendAnalysis txs={txs} groups={groups} budgets={budgets} subCats={subCats}/>}
         {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} sources={sources} setSources={setSources} subCats={subCats} setSubCats={setSubCats} currentUser={user}/>}
