@@ -256,7 +256,7 @@ const getFinanceCoach=({txs,budgets,month,year,prevTotal=0})=>{
   return {start,end,startStr,endStr,daysInPeriod,daysPassed,daysLeft,daysLeftInclToday,isCurrent,isFuture,total,target,budgetTarget,forecast,remaining,safeToday,neededCut,status};
 };
 
-const getCategoryBrakes=({txs,groups,budgets,month,year})=>{
+const getCategoryBrakes=({txs,groups,subCats=[],budgets,month,year})=>{
   const coach=getFinanceCoach({txs,budgets,month,year});
   // Only include budgets relevant to this period:
   // - no date_from/date_to = always active (legacy)
@@ -284,7 +284,12 @@ const getCategoryBrakes=({txs,groups,budgets,month,year})=>{
   return deduped.map(b=>{
     const g=groups.find(x=>x.id===b.group_id);
     if(!g)return null;
-    const catTx=txs.filter(t=>t.group_id===g.id&&t.date>=coach.startStr&&t.date<=coach.endStr);
+    const sc=b.sub_category_id?groups.find(x=>x.id===b.group_id)&&{id:b.sub_category_id}:null;
+    const catTx=txs.filter(t=>{
+      if(t.group_id!==g.id||t.date<coach.startStr||t.date>coach.endStr)return false;
+      if(b.sub_category_id)return t.sub_category_id===b.sub_category_id;
+      return true;
+    });
     const spent=catTx.reduce((s,t)=>s+t.amount,0);
     const budget=b.amount||0;
     const remaining=budget-spent;
@@ -294,6 +299,8 @@ const getCategoryBrakes=({txs,groups,budgets,month,year})=>{
     const forecastOver=forecast-budget;
     const safePerDay=Math.max(0,Math.floor(remaining/coach.daysLeftInclToday));
     const avgTx=catTx.length?Math.round(spent/catTx.length):0;
+    const subCatObj=b.sub_category_id?subCats.find(x=>x.id===b.sub_category_id):null;
+    const displayName=subCatObj?`${g.name} / ${subCatObj.name}`:g.name;
     let status='safe';
     if(spent>budget)status='over';
     else if(forecast>budget||usage>=.8)status='brake';
@@ -304,7 +311,7 @@ const getCategoryBrakes=({txs,groups,budgets,month,year})=>{
       ? `Over ${idr(Math.abs(remaining))}. Stop dulu kecuali urgent.`
       : `Limit aman ${idr(safePerDay)}/hari sampai period reset.`;
     const reason=status==='over'
-      ? `${g.name} sudah lewat budget.`
+      ? `${displayName} sudah lewat budget.`
       : forecast>budget
         ? `Pace sekarang bisa over ${idr(forecastOver)}.`
         : usage>=.8
@@ -312,7 +319,7 @@ const getCategoryBrakes=({txs,groups,budgets,month,year})=>{
           : status==='tight'
             ? `Sisa ruang mulai sempit.`
             : `Masih on track.`;
-    return {group:g,budget,spent,remaining,usage,forecast,forecastOver,safePerDay,avgTx,status,score,reason,limitText,txCount:catTx.length};
+    return {group:g,subCategoryId:b.sub_category_id||null,displayName,budget,spent,remaining,usage,forecast,forecastOver,safePerDay,avgTx,status,score,reason,limitText,txCount:catTx.length};
   }).filter(Boolean).sort((a,b)=>b.score-a.score);
 };
 
@@ -628,7 +635,7 @@ const Dashboard=React.memo(function Dashboard({txs,groups,budgets,sources,onRefr
   const wDays=useMemo(()=>{const a=[];for(let i=6;i>=0;i--){const d=new Date(wt);d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];const tot=txs.filter(t=>t.date===ds).reduce((s,t)=>s+t.amount,0);a.push({date:ds,tot,label:dayN(ds),isToday:ds===tod()})}return a},[txs,wt]);
   const maxD=Math.max(...wDays.map(d=>d.tot),1);
   const recent=useMemo(()=>{let a=[...txs].sort((a,b)=>b.date.localeCompare(a.date));if(fg!=='all')a=a.filter(t=>t.group_id===fg);return a.slice(0,lim)},[txs,fg,lim]);
-  const catStatusAll=useMemo(()=>getCategoryBrakes({txs,groups,budgets,month:mon,year:yr}),[txs,groups,budgets,mon,yr]);
+  const catStatusAll=useMemo(()=>getCategoryBrakes({txs,groups,subCats,budgets,month:mon,year:yr}),[txs,groups,subCats,budgets,mon,yr]);
   const brakeAlerts=useMemo(()=>catStatusAll.filter(x=>x.status!=='safe').slice(0,3),[catStatusAll]);
 
   return(
@@ -665,10 +672,10 @@ const Dashboard=React.memo(function Dashboard({txs,groups,budgets,sources,onRefr
               {overCats.map(x=>{
                 const g=x.group;
                 return(
-                  <div key={g.id} className="stat-card" style={{borderColor:'rgba(255,77,77,.35)'}}>
+                  <div key={g.id+(x.subCategoryId||'')} className="stat-card" style={{borderColor:'rgba(255,77,77,.35)'}}>
                     <div className="stat-label" style={{display:'flex',alignItems:'center',gap:6}}>
                       <span style={{fontSize:14}}>{g.emoji||'💰'}</span>
-                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name}</span>
+                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{x.displayName}</span>
                     </div>
                     <div className="stat-value" style={{color:'var(--red)'}}>Rp {Math.round(x.spent/1000)}K</div>
                     <div className="stat-sub" style={{color:'var(--red)',fontWeight:700}}>Over {Math.round((x.usage-1)*100)}%</div>
@@ -1077,6 +1084,7 @@ const Master=React.memo(function Master({groups,setGroups,budgets,setBudgets,sou
   const [bType,setBType]=useState('monthly');
   const [bFrom,setBFrom]=useState(()=>{const d=new Date();d.setDate(1);return d.toISOString().split('T')[0]});
   const [bTo,setBTo]=useState(()=>{const d=new Date(new Date().getFullYear(),new Date().getMonth()+1,0);return d.toISOString().split('T')[0]});
+  const [bSubId,setBSubId]=useState('');
   // user form
   const [showUsr,setShowUsr]=useState(false);
   const [editUsr,setEditUsr]=useState(null);
@@ -1187,15 +1195,15 @@ const Master=React.memo(function Master({groups,setGroups,budgets,setBudgets,sou
   const saveBud=async()=>{
     if(!bGid||!bAmt)return;setSaving(true);
     try{
-      const e={id:editBud?.id||'b'+Date.now(),user_id:currentUser.id,group_id:bGid,amount:parseInt(bAmt.replace(/[^0-9]/g,'')||'0'),type:bType,date_from:bFrom,date_to:bTo};
+      const e={id:editBud?.id||'b'+Date.now(),user_id:currentUser.id,group_id:bGid,sub_category_id:bSubId||null,amount:parseInt(bAmt.replace(/[^0-9]/g,'')||'0'),type:bType,date_from:bFrom,date_to:bTo};
       if(editBud){await db.patch('budgets',editBud.id,e);setBudgets(bs=>bs.map(b=>b.id===editBud.id?e:b))}
       else{await db.post('budgets',e);setBudgets(bs=>[...bs,e])}
-      setShowBud(false);setEditBud(null);setBAmt('');setBGid('');showT('Budget saved');
+      setShowBud(false);setEditBud(null);setBAmt('');setBGid('');setBSubId('');showT('Budget saved');
     }catch{showT('Failed','⚠️')}
     setSaving(false);
   };
   const delBud=async(id)=>{try{await db.del('budgets',id);setBudgets(bs=>bs.filter(b=>b.id!==id));showT('Deleted','🗑')}catch{showT('Failed','⚠️')}};
-  const openEditBud=(b)=>{setEditBud(b);setBGid(b.group_id);setBAmt(String(b.amount));setBType(b.type);setBFrom(b.date_from||'');setBTo(b.date_to||'');setShowBud(true)};
+  const openEditBud=(b)=>{setEditBud(b);setBGid(b.group_id);setBSubId(b.sub_category_id||'');setBAmt(String(b.amount));setBType(b.type);setBFrom(b.date_from||'');setBTo(b.date_to||'');setShowBud(true)};
 
   const openAddUsr=()=>{setEditUsr(null);setUName('');setUDisp('');setUPass('');setUAv('😊');setUErr('');setShowUsr(true)};
   const openEditUsrFn=(u)=>{setEditUsr(u);setUName(u.username);setUDisp(u.display_name);setUPass('');setUAv(u.avatar);setUErr('');setShowUsr(true)};
@@ -1282,12 +1290,15 @@ const Master=React.memo(function Master({groups,setGroups,budgets,setBudgets,sou
       {tab==='budgets'&&(
         <div className="section">
           <button className="btn" style={{marginBottom:16}} onClick={()=>{setEditBud(null);setBAmt('');setBGid(groups[0]?.id||'');setShowBud(true)}}>+ Set Budget</button>
-          {budgets.map(b=>{const g=groups.find(x=>x.id===b.group_id);return(
+          {budgets.map(b=>{const g=groups.find(x=>x.id===b.group_id);const sc=subCats.find(x=>x.id===b.sub_category_id);return(
             <div key={b.id} className="card" style={{marginBottom:10}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                 <div style={{display:'flex',alignItems:'center',gap:10}}>
                   <span style={{fontSize:20}}>{g?.emoji||'💰'}</span>
-                  <div><div style={{fontWeight:500,fontSize:14}}>{g?.name||'Unknown'}</div><div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{b.type==='weekly'?'Weekly':'Monthly'} | {b.date_from} - {b.date_to}</div></div>
+                  <div>
+                    <div style={{fontWeight:500,fontSize:14}}>{g?.name||'Unknown'}{sc&&<span style={{fontWeight:400,color:'var(--t2)',fontSize:13}}> / {sc.name}</span>}</div>
+                    <div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{b.type==='weekly'?'Weekly':'Monthly'} | {b.date_from} - {b.date_to}</div>
+                  </div>
                 </div>
                 <div style={{textAlign:'right'}}>
                   <div style={{fontFamily:'var(--fh)',fontSize:15,fontWeight:700,color:'var(--a)'}}>{idr(b.amount)}</div>
@@ -1402,10 +1413,18 @@ const Master=React.memo(function Master({groups,setGroups,budgets,setBudgets,sou
               <div className="modal-handle"/>
               <div className="modal-title">{editBud?'Edit Budget':'Set Budget'}</div>
               <div className="fg"><label className="fl">Category</label>
-                <select className="fi" value={bGid} onChange={e=>setBGid(e.target.value)}>
+                <select className="fi" value={bGid} onChange={e=>{setBGid(e.target.value);setBSubId('');}}>
                   {groups.map(g=><option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
                 </select>
               </div>
+              {subCats.filter(s=>s.group_id===bGid).length>0&&(
+                <div className="fg"><label className="fl">Sub Category <span style={{color:'var(--t3)',fontWeight:400}}>(opsional)</span></label>
+                  <select className="fi" value={bSubId} onChange={e=>setBSubId(e.target.value)}>
+                    <option value="">-- Semua sub category --</option>
+                    {subCats.filter(s=>s.group_id===bGid).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div className="fg"><label className="fl">Amount (IDR)</label>
                 <input className="fi" inputMode="numeric" placeholder="e.g. 1.500.000"
                   value={bAmt?parseInt(bAmt.replace(/\./g,'').replace(/[^0-9]/g,'')||'0').toLocaleString('id-ID'):''}
@@ -1809,7 +1828,7 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
   },[txs,selMonth,selYear]);
   const prevTotal=useMemo(()=>prevTx.reduce((s,t)=>s+t.amount,0),[prevTx]);
   const coach=useMemo(()=>getFinanceCoach({txs,budgets,month:selMonth,year:selYear,prevTotal}),[txs,budgets,selMonth,selYear,prevTotal]);
-  const categoryBrakes=useMemo(()=>getCategoryBrakes({txs,groups,budgets,month:selMonth,year:selYear}),[txs,groups,budgets,selMonth,selYear]);
+  const categoryBrakes=useMemo(()=>getCategoryBrakes({txs,groups,subCats,budgets,month:selMonth,year:selYear}),[txs,groups,subCats,budgets,selMonth,selYear]);
 
   // 3-month history for trend detection
   const prev2Tx=useMemo(()=>{
