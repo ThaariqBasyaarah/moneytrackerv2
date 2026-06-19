@@ -718,24 +718,21 @@ const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sou
         </div>
       </div>
 
-      {groups.length>0&&(
+      {catStatusAll.length>0&&(
         <div className="section">
           <div className="section-label">Monthly Budget Progress</div>
           <div className="card">
-            {groups.map(g=>{
-              const b=budgets.find(x=>x.group_id===g.id&&x.type==='monthly');
-              if(!b)return null;
-              const spent=byG[g.id]||0;
-              const budget=b.amount||0;
-              const pct=budget?Math.min((spent/budget)*100,100):0;
-              const st=!budget?'n':pct>90?'o':pct>70?'w':'s';
+            {catStatusAll.map(x=>{
+              const g=x.group;
+              const pct=Math.min((x.spent/x.budget)*100,100);
+              const st=x.status==='over'?'o':pct>70?'w':'s';
               return(
-                <div key={g.id} className="prog-wrap">
+                <div key={g.id+(x.subCategoryId||'')} className="prog-wrap">
                   <div className="prog-hd">
-                    <div className="prog-name">{g.emoji} {g.name}</div>
-                    <div className="prog-right"><div className="prog-spent">{idr(spent)}</div><div className="prog-bud">{budget?`of ${idr(budget)}`:'no budget'}</div></div>
+                    <div className="prog-name">{g.emoji} {x.displayName}</div>
+                    <div className="prog-right"><div className="prog-spent">{idr(x.spent)}</div><div className="prog-bud">{x.budget?`of ${idr(x.budget)}`:'no budget'}</div></div>
                   </div>
-                  {budget>0&&(
+                  {x.budget>0&&(
                     <>
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
                         <div className="prog-track" style={{flex:1,marginRight:8}}>
@@ -743,7 +740,7 @@ const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sou
                         </div>
                         <span style={{fontSize:11,fontWeight:600,color:st==='o'?'#ff4d4d':st==='w'?'#ffb347':'var(--a)',flexShrink:0}}>{pct.toFixed(0)}%</span>
                       </div>
-                      {st==='o'&&<div style={{fontSize:11,color:'#ff4d4d',marginTop:2}}>⚠️ Over budget!</div>}
+                      {st==='o'&&<div style={{fontSize:11,color:'#ff4d4d',marginTop:2}}>Over budget!</div>}
                     </>
                   )}
                 </div>
@@ -2304,11 +2301,11 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
                 {categoryBrakes.map(x=>{
                   const col=x.status==='over'?'var(--red)':x.status==='brake'?'var(--amber)':x.status==='tight'?'var(--a)':'var(--t2)';
                   return(
-                    <div key={x.group.id} className="card" style={{padding:14}}>
+                    <div key={x.group.id+(x.subCategoryId||'')} className="card" style={{padding:14}}>
                       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
                         <div style={{width:36,height:36,borderRadius:10,background:`${x.group.color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>{x.group.emoji}</div>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:14,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.group.name}</div>
+                          <div style={{fontSize:14,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.displayName}</div>
                           <div style={{fontSize:11,color:'var(--t3)',marginTop:2}}>{x.txCount} tx | forecast {idr(x.forecast)}</div>
                         </div>
                         <div style={{fontSize:11,fontWeight:800,color:col,textTransform:'uppercase'}}>{x.status}</div>
