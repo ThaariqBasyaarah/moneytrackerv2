@@ -609,7 +609,7 @@ function PieChart({data,groups,total}){
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────
-const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sources,onRefresh,syncing,onEditTx}){
+const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sources,onRefresh,syncing,onEditTx,onOverBudgetClick}){
   const [mon,setMon]=useState(new Date().getMonth());
   const [yr]=useState(new Date().getFullYear());
   const [wf,setWf]=useState(()=>{const d=new Date();d.setDate(d.getDate()-6);return d.toISOString().split('T')[0]});
@@ -671,8 +671,10 @@ const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sou
             <div className="stats-grid">
               {overCats.map(x=>{
                 const g=x.group;
+                const coach=getFinanceCoach({txs,budgets,month:mon,year:yr});
                 return(
-                  <div key={g.id+(x.subCategoryId||'')} className="stat-card" style={{borderColor:'rgba(255,77,77,.35)'}}>
+                  <div key={g.id+(x.subCategoryId||'')} className="stat-card" style={{borderColor:'rgba(255,77,77,.35)',cursor:'pointer',userSelect:'none'}}
+                    onClick={()=>onOverBudgetClick&&onOverBudgetClick({group_id:g.id,sub_category_id:x.subCategoryId||null,dateFrom:coach.startStr,dateTo:coach.endStr,displayName:x.displayName})}>
                     <div className="stat-label" style={{display:'flex',alignItems:'center',gap:6}}>
                       <span style={{fontSize:14}}>{g.emoji||'💰'}</span>
                       <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{x.displayName}</span>
@@ -827,17 +829,19 @@ const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sou
 })
 
 // ── HISTORY ───────────────────────────────────────────────────────────
-const History=React.memo(function History({txs,groups,subCats,sources,onDelete,onEdit}){
-  const [fg,setFg]=useState('all');
-  const [fsub,setFsub]=useState('all');
+const History=React.memo(function History({txs,groups,subCats,sources,onDelete,onEdit,initialFilter,onMounted}){
+  const [fg,setFg]=useState(()=>initialFilter?.group_id||'all');
+  const [fsub,setFsub]=useState(()=>initialFilter?.sub_category_id||'all');
   const [fsrc,setFsrc]=useState('all');
   const [q,setQ]=useState('');
   const [dir,setDir]=useState('desc');
-  const [dateFrom,setDateFrom]=useState('');
-  const [dateTo,setDateTo]=useState('');
+  const [dateFrom,setDateFrom]=useState(()=>initialFilter?.dateFrom||'');
+  const [dateTo,setDateTo]=useState(()=>initialFilter?.dateTo||'');
   const [amtMin,setAmtMin]=useState('');
   const [amtMax,setAmtMax]=useState('');
   const [showFilter,setShowFilter]=useState(false);
+
+  useEffect(()=>{if(onMounted)onMounted();},[]);
 
   const parseAmt=v=>v.replace(/[^0-9]/g,'');
 
@@ -2469,6 +2473,7 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
 function App(){
   const [user,setUser]=useState(()=>getSession());
   const [tab,setTab]=useState('dash');
+  const [histFilter,setHistFilter]=useState(null);
   const [showAdd,setShowAdd]=useState(false);
   const [editTxItem,setEditTxItem]=useState(null);
   const [txs,setTxs]=useState([]);
@@ -2553,8 +2558,8 @@ function App(){
 
       {/* Main content */}
       <div className="main-wrap">
-        {tab==='dash'&&<Dashboard txs={txs} groups={groups} subCats={subCats} budgets={budgets} sources={sources} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem}/>}
-        {tab==='hist'&&<History txs={txs} groups={groups} subCats={subCats} sources={sources} onDelete={delTx} onEdit={setEditTxItem}/>}
+        {tab==='dash'&&<Dashboard txs={txs} groups={groups} subCats={subCats} budgets={budgets} sources={sources} onRefresh={()=>load(user.id)} syncing={syncing} onEditTx={setEditTxItem} onOverBudgetClick={(filter)=>{setHistFilter(filter);setTab('hist');}}/>}
+        {tab==='hist'&&<History txs={txs} groups={groups} subCats={subCats} sources={sources} onDelete={delTx} onEdit={setEditTxItem} initialFilter={histFilter} onMounted={()=>setHistFilter(null)}/>}
         {tab==='analysis'&&<SpendAnalysis txs={txs} groups={groups} budgets={budgets} subCats={subCats}/>}
         {tab==='master'&&<Master groups={groups} setGroups={setGroups} budgets={budgets} setBudgets={setBudgets} sources={sources} setSources={setSources} subCats={subCats} setSubCats={setSubCats} currentUser={user}/>}
         {tab==='profile'&&<Profile currentUser={user} txs={txs} onRefresh={()=>load(user.id)} onLogout={logout}/>}
