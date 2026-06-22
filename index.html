@@ -319,7 +319,7 @@ const getCategoryBrakes=({txs,groups,subCats=[],budgets,month,year})=>{
           : status==='tight'
             ? `Sisa ruang mulai sempit.`
             : `Masih on track.`;
-    return {group:g,subCategoryId:b.sub_category_id||null,displayName,budget,spent,remaining,usage,forecast,forecastOver,safePerDay,avgTx,status,score,reason,limitText,txCount:catTx.length};
+    return {group:g,subCategoryId:b.sub_category_id||null,displayName,budget,spent,remaining,usage,forecast,forecastOver,safePerDay,avgTx,status,score,reason,limitText,txCount:catTx.length,budgetDateFrom:b.date_from||coach.startStr,budgetDateTo:b.date_to||coach.endStr};
   }).filter(Boolean).sort((a,b)=>b.score-a.score);
 };
 
@@ -671,10 +671,9 @@ const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sou
             <div className="stats-grid">
               {overCats.map(x=>{
                 const g=x.group;
-                const coach=getFinanceCoach({txs,budgets,month:mon,year:yr});
                 return(
                   <div key={g.id+(x.subCategoryId||'')} className="stat-card" style={{borderColor:'rgba(255,77,77,.35)',cursor:'pointer',userSelect:'none'}}
-                    onClick={()=>onOverBudgetClick&&onOverBudgetClick({group_id:g.id,sub_category_id:x.subCategoryId||null,dateFrom:coach.startStr,dateTo:coach.endStr,displayName:x.displayName})}>
+                    onClick={()=>onOverBudgetClick&&onOverBudgetClick({group_id:g.id,sub_category_id:x.subCategoryId||null,dateFrom:x.budgetDateFrom,dateTo:x.budgetDateTo,displayName:x.displayName})}>
                     <div className="stat-label" style={{display:'flex',alignItems:'center',gap:6}}>
                       <span style={{fontSize:14}}>{g.emoji||'💰'}</span>
                       <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{x.displayName}</span>
