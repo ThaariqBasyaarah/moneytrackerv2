@@ -2286,7 +2286,7 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
                 {coach.status==='no-target'
                   ? 'Belum ada budget bulanan. Set budget dulu biar app bisa ngasih batas harian yang bener.'
                   : coach.status==='over'
-                    ? `Kalau pace begini terus, bakal lewat target ${idr(coach.forecast-coach.target)}. Mulai hari ini turunin sekitar ${idr(coach.neededCut)}/hari.`
+                    ? `Kalau pace begini terus, projected spend bakal ${idr(coach.forecast)} — over ${idr(coach.forecast-coach.target)} dari target. Mulai hari ini turunin sekitar ${idr(coach.neededCut)}/hari.`
                     : coach.status==='tight'
                       ? 'Masih bisa aman, tapi margin-nya tipis. Jangan habisin sisa budget cuma karena kelihatan masih ada.'
                       : coach.status==='closed'
