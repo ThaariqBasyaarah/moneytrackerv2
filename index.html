@@ -661,7 +661,7 @@ const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sou
       </div>
 
       <div className="hero-card fade">
-        <div className="hero-label">TOTAL SPENT - {MN[mon].toUpperCase()}</div>
+        <div className="hero-label">TOTAL SPENT - {MN[mon-1].toUpperCase()}</div>
         <div className="hero-amt"><span className="hero-cur">Rp</span>{mTotal.toLocaleString('id-ID')}</div>
         <div className="hero-sub">{mTx.length} tx | {new Date(yr,mon-1,25).toLocaleDateString('id-ID',{day:'numeric',month:'short'})} - {new Date(yr,mon,24).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</div>
 
