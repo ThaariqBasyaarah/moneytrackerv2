@@ -234,8 +234,9 @@ const getActivePeriodYear=()=>{const d=new Date();return d.getDate()>=25&&d.getM
 
 const getFinanceCoach=({txs,budgets,month,year,prevTotal=0})=>{
   const dayMs=86400000;
-  const start=new Date(year,month-1,25);
-  const end=new Date(year,month,24);
+  // month is 1-indexed (e.g. 7 = July), period = 25 Jun → 24 Jul
+  const start=new Date(year,month-2,25);
+  const end=new Date(year,month-1,24);
   const startStr=start.toISOString().split('T')[0];
   const endStr=end.toISOString().split('T')[0];
   const today=new Date();
@@ -625,9 +626,9 @@ const Dashboard=React.memo(function Dashboard({txs,groups,subCats=[],budgets,sou
   // Period: 25th of prev month to 24th of selected month
   const mTx=useMemo(()=>{
     // "mon" = selected month (1-indexed, e.g. 7 = July)
-    // Period: 25th of (mon-1) → 24th of (mon)
-    const periodStart=new Date(yr, mon-1, 25);
-    const periodEnd=new Date(yr, mon, 24);
+    // Period: 25 Jun → 24 Jul means: new Date(yr, mon-2, 25) → new Date(yr, mon-1, 24)
+    const periodStart=new Date(yr, mon-2, 25);
+    const periodEnd=new Date(yr, mon-1, 24);
     const startStr=periodStart.toISOString().split('T')[0];
     const endStr=periodEnd.toISOString().split('T')[0];
     return txs.filter(t=>t.date>=startStr&&t.date<=endStr);
@@ -1595,6 +1596,7 @@ const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,subCat
   const months=useMemo(()=>{
     const arr=[];
     for(let m=0;m<12;m++){
+      // m=0 (Jan) → period: 25 Dec prev year → 24 Jan
       const s=new Date(selYear,m-1,25).toISOString().split('T')[0];
       const e=new Date(selYear,m,24).toISOString().split('T')[0];
       const pt=buildPoint(txs.filter(t=>t.date>=s&&t.date<=e));
@@ -1647,7 +1649,7 @@ const MonthlyTrendChart=React.memo(function MonthlyTrendChart({txs,groups,subCat
     y:padT+chartH-f*chartH,
     label:maxVal*f>=1000000?`${(maxVal*f/1000000).toFixed(1)}M`:maxVal*f>=1000?`${Math.round(maxVal*f/1000)}K`:'0'
   }));
-  const activeIdx=mode==='monthly'?selMonth:pts.length-1;
+  const activeIdx=mode==='monthly'?selMonth-1:pts.length-1;
   const maxVal2=Math.max(...activeData);
   const maxIdx=maxVal2>0?activeData.indexOf(maxVal2):-1;
   const ytd=activeData.reduce((s,v)=>s+v,0);
@@ -1775,8 +1777,9 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
   const [showInsights,setShowInsights]=useState(false);
 
   const mTx=useMemo(()=>{
-    const s=new Date(selYear,selMonth-1,25).toISOString().split('T')[0];
-    const e=new Date(selYear,selMonth,24).toISOString().split('T')[0];
+    // selMonth 1-indexed (e.g. 7=July) → period 25 Jun → 24 Jul
+    const s=new Date(selYear,selMonth-2,25).toISOString().split('T')[0];
+    const e=new Date(selYear,selMonth-1,24).toISOString().split('T')[0];
     return txs.filter(t=>t.date>=s&&t.date<=e);
   },[txs,selMonth,selYear]);
 
@@ -1826,8 +1829,9 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
 
   // Previous month data
   const prevTx=useMemo(()=>{
-    const s=new Date(selYear,selMonth-2,25).toISOString().split('T')[0];
-    const e=new Date(selYear,selMonth-1,24).toISOString().split('T')[0];
+    // previous period: one month before selMonth
+    const s=new Date(selYear,selMonth-3,25).toISOString().split('T')[0];
+    const e=new Date(selYear,selMonth-2,24).toISOString().split('T')[0];
     return txs.filter(t=>t.date>=s&&t.date<=e);
   },[txs,selMonth,selYear]);
   const prevTotal=useMemo(()=>prevTx.reduce((s,t)=>s+t.amount,0),[prevTx]);
@@ -1836,8 +1840,9 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
 
   // 3-month history for trend detection
   const prev2Tx=useMemo(()=>{
-    const s=new Date(selYear,selMonth-3,25).toISOString().split('T')[0];
-    const e=new Date(selYear,selMonth-2,24).toISOString().split('T')[0];
+    // two months before selMonth
+    const s=new Date(selYear,selMonth-4,25).toISOString().split('T')[0];
+    const e=new Date(selYear,selMonth-3,24).toISOString().split('T')[0];
     return txs.filter(t=>t.date>=s&&t.date<=e);
   },[txs,selMonth,selYear]);
   const prev2Total=useMemo(()=>prev2Tx.reduce((s,t)=>s+t.amount,0),[prev2Tx]);
@@ -2225,9 +2230,9 @@ const SpendAnalysis=React.memo(function SpendAnalysis({txs,groups,budgets,subCat
       {/* Summary */}
       <div className="section">
         <div className="card">
-          <div style={{fontSize:12,color:'var(--t2)',marginBottom:4}}>Total — {MN[selMonth]}</div>
+          <div style={{fontSize:12,color:'var(--t2)',marginBottom:4}}>Total — {MN[selMonth-1]}</div>
           <div style={{fontFamily:'var(--fh)',fontSize:30,fontWeight:800,letterSpacing:'-1px'}}>{idr(total)}</div>
-          <div style={{fontSize:12,color:'var(--t3)',marginTop:4}}>{mTx.length} tx · {new Date(selYear,selMonth-1,25).toLocaleDateString('id-ID',{day:'numeric',month:'short'})} - {new Date(selYear,selMonth,24).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</div>
+          <div style={{fontSize:12,color:'var(--t3)',marginTop:4}}>{mTx.length} tx · {new Date(selYear,selMonth-2,25).toLocaleDateString('id-ID',{day:'numeric',month:'short'})} - {new Date(selYear,selMonth-1,24).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</div>
         </div>
       </div>
 
